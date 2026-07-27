@@ -30,7 +30,7 @@ main_loop() {
     while true; do
         clear
         display_banner_with_menu "main"
-        echo -ne "                                                ${BOLD}${BRIGHT_RED}▪ Choose an option : ${RESET}"
+        echo -ne "                                                             ${BOLD}${RED}▪ No mercy, no retreat. Pick your move : ${RESET}"
         read -r choice
 
         case "$choice" in
