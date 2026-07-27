@@ -1,0 +1,57 @@
+name: Tool request
+description: Propose a new tool or module for Nuke
+title: "[Tool] "
+labels: ["enhancement", "tool-request"]
+body:
+  - type: input
+    id: tool_name
+    attributes:
+      label: Tool name
+      placeholder: "e.g. nmap"
+    validations:
+      required: true
+
+  - type: input
+    id: tool_url
+    attributes:
+      label: Upstream URL
+      placeholder: "https://github.com/owner/tool"
+    validations:
+      required: true
+
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Why this tool fits Nuke
+      description: What does it add to the toolkit?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: target_module
+    attributes:
+      label: Suggested module placement
+      options:
+        - lib/modules/passive.sh
+        - lib/modules/active.sh
+        - lib/modules/special.sh
+        - New module
+    validations:
+      required: true
+
+  - type: textarea
+    id: install_hint
+    attributes:
+      label: Installation hint
+      description: How is the tool installed on Debian/Kali? (apt, pipx, git clone, ...)
+      placeholder: |
+        pipx install some-tool
+    validations:
+      required: true
+
+  - type: textarea
+    id: example_usage
+    attributes:
+      label: Example invocation
+      description: A representative command, ideally usable as the body of the new module function.
+      render: bash
