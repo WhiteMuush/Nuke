@@ -367,10 +367,16 @@ k8s_recover() {
 # ---------------------------------------------------------------------------
 # Menu.
 # ---------------------------------------------------------------------------
-# Pick an intensity, then run the given fault function with it.
+# Pick an intensity (full sub-view), then run the fault on a clean screen.
 _k8s_run_fault() {
-    local fn="$1" level
-    level="$(nuke_pick_level)" || { log_info "Cancelled."; sleep 1; return 0; }
+    local fn="$1" label="$2" level line
+    level="$(nuke_pick_level "Intensity for ${label}")" || return 0
+    clear
+    printf '\n'
+    for line in "${NUKE_BRAND_HEADER[@]}"; do
+        printf '   %b\n' "${line}"
+    done
+    printf '   %b%s @ %s%b\n' "${BOLD}${BRIGHT_RED}" "${label}" "$(nuke_level_label "${level}")" "${RESET}"
     "${fn}" "${level}"
     press_enter_to_continue
 }
@@ -387,16 +393,16 @@ handle_kubernetes_menu() {
             1)  k8s_set_scope ;;
             2)  k8s_status ;;
             3)  k8s_setup_chaos_mesh ;;
-            4)  _k8s_run_fault k8s_pod_kill ;;
-            5)  _k8s_run_fault k8s_cm_pod_failure ;;
-            6)  _k8s_run_fault k8s_cm_net_delay ;;
-            7)  _k8s_run_fault k8s_cm_net_loss ;;
-            8)  _k8s_run_fault k8s_cm_net_partition ;;
-            9)  _k8s_run_fault k8s_cm_stress_cpu ;;
-            10) _k8s_run_fault k8s_cm_stress_mem ;;
-            11) _k8s_run_fault k8s_cm_dns ;;
-            12) _k8s_run_fault k8s_cm_time ;;
-            13) _k8s_run_fault k8s_node_drain ;;
+            4)  _k8s_run_fault k8s_pod_kill        "Pod-kill" ;;
+            5)  _k8s_run_fault k8s_cm_pod_failure  "Pod-failure" ;;
+            6)  _k8s_run_fault k8s_cm_net_delay    "Net delay" ;;
+            7)  _k8s_run_fault k8s_cm_net_loss     "Net loss" ;;
+            8)  _k8s_run_fault k8s_cm_net_partition "Net partition" ;;
+            9)  _k8s_run_fault k8s_cm_stress_cpu   "Stress CPU" ;;
+            10) _k8s_run_fault k8s_cm_stress_mem   "Stress memory" ;;
+            11) _k8s_run_fault k8s_cm_dns          "DNS chaos" ;;
+            12) _k8s_run_fault k8s_cm_time         "Time skew" ;;
+            13) _k8s_run_fault k8s_node_drain      "Node drain" ;;
             99) k8s_nuke_all; press_enter_to_continue ;;
             r|R) k8s_recover ;;
             0)  return ;;
