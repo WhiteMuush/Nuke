@@ -45,8 +45,9 @@ readonly BRIGHT_RED BRIGHT_GREEN BRIGHT_MAGENTA
 
 # ---------------------------------------------------------------------------
 # Global runtime state. Modules read and write these freely.
+# Per-experiment scope (namespace / container / host filter) lives in
+# NUKE_SCOPE, defined by the safety layer and set inside each target layer.
 # ---------------------------------------------------------------------------
-NUKE_TARGET=""
 NUKE_OUTPUT_DIR="nuke_out_$(date +%Y%m%d_%H%M%S)"
 
 # Where third-party tools may be cloned by install.sh.
