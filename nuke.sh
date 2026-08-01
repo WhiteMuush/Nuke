@@ -23,6 +23,8 @@ source "${SCRIPT_DIR}/lib/toolbox.sh"
 source "${SCRIPT_DIR}/lib/ui.sh"
 # shellcheck source=lib/modules/config.sh
 source "${SCRIPT_DIR}/lib/modules/config.sh"
+# shellcheck source=lib/modules/kubernetes.sh
+source "${SCRIPT_DIR}/lib/modules/kubernetes.sh"
 # shellcheck source=lib/modules/passive.sh
 source "${SCRIPT_DIR}/lib/modules/passive.sh"
 # shellcheck source=lib/modules/active.sh
@@ -32,6 +34,7 @@ source "${SCRIPT_DIR}/lib/modules/special.sh"
 
 main_loop() {
     local choice
+    nuke_arm_rollback
     display_title_middle_screen
     sleep 2
 
@@ -46,6 +49,7 @@ main_loop() {
             2) handle_passive_menu ;;
             3) handle_active_menu ;;
             4) handle_special_menu ;;
+            5) handle_kubernetes_menu ;;
             0)
                 printf '\n%bExiting Nuke...%b\n' "${BRIGHT_MAGENTA}" "${RESET}"
                 exit 0
