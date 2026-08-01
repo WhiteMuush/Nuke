@@ -76,12 +76,6 @@ BORDER
 # ---------------------------------------------------------------------------
 NUKE_BRAND_HEADER=(
     ""
-    "${BRIGHT_RED}▄▄▄    ▄▄▄   ▄▄▄  ▄▄▄   ▄▄▄   ▄▄▄    ▄▄▄▄▄▄▄      ▄▄▄ ${RESET}"
-    "${BRIGHT_RED}████▄  ███   ███  ███   ███ ▄███▀   ███▀▀▀▀▀      ███ ${RESET}"
-    "${BRIGHT_RED}███▀██▄███   ███  ███   ███████     ███▄▄         ███ ${RESET}"
-    "${BRIGHT_RED}███  ▀████   ███▄▄███   ███▀███▄    ███           ▀▀▀ ${RESET}"
-    "${BRIGHT_RED}███    ███   ▀██████▀   ███  ▀███   ▀███████      ███ ${RESET}"
-    ""
     "${BRIGHT_RED}${BOLD}Chaos & Resilience Toolkit ☢️${RESET}"
     ""
     "${BOLD}🚩 Only detonate infra you own or are cleared to test. ${RESET}"
@@ -177,8 +171,7 @@ generate_kubernetes_menu() {
         "$(_menu_row2 1 "Set scope"        2  "Status")"
         "$(_menu_row2 3 "Setup Chaos Mesh" ""  "")"
         ""
-        "${DIM}Faults Menu${RESET}"
-        ""
+        "${DIM}Faults (POKE -> NUKE!)${RESET}"
         "$(_menu_row2 4  "Pod-kill"         5  "Pod-failure")"
         "$(_menu_row2 6  "Net delay"        7  "Net loss")"
         "$(_menu_row2 8  "Net partition"    9  "Stress CPU")"
