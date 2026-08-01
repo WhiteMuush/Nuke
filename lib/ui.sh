@@ -108,13 +108,11 @@ _menu_row2() {
 # menus and the input always sits right under its own titled screen.
 # ---------------------------------------------------------------------------
 nuke_subview() {
-    local title="$1" line
+    local title="$1"
     clear
-    printf '\n'
-    for line in "${NUKE_BRAND_HEADER[@]}"; do
-        printf '   %b\n' "${line}"
-    done
-    [[ -n "${title}" ]] && printf '   %b%s%b\n\n' "${BOLD}${BRIGHT_RED}" "${title}" "${RESET}"
+    local -a lines=( "${NUKE_BRAND_HEADER[@]}" )
+    [[ -n "${title}" ]] && lines+=( "${BOLD}${BRIGHT_RED}${title}${RESET}" "" )
+    render_banner_with_lines "${lines[@]}"
 }
 
 # Styled, indented prompt line used across sub-views for consistency.
@@ -288,24 +286,16 @@ display_title_middle_screen() {
 }
 
 # ---------------------------------------------------------------------------
-# Side-by-side rendering of the ASCII art and the active menu.
+# Core renderer: draw the given right-column lines beside the skull art and the
+# yellow border. Every screen (menus and action sub-views) goes through this so
+# they all share the same look. Pass the right-column lines as arguments.
 # ---------------------------------------------------------------------------
-display_banner_with_menu() {
-    local menu_type="$1"
-    local -a ascii_lines menu_lines border_lines
+render_banner_with_lines() {
+    local -a menu_lines=( "$@" )
+    local -a ascii_lines border_lines
 
     mapfile -t ascii_lines <<< "$NUKE_ASCII_ART"
     mapfile -t border_lines <<< "$BORDER_MENU"
-
-    case "$menu_type" in
-        main)    mapfile -t menu_lines < <(generate_main_menu) ;;
-        config)  mapfile -t menu_lines < <(generate_config_menu) ;;
-        kubernetes) mapfile -t menu_lines < <(generate_kubernetes_menu) ;;
-        *)
-            log_error "Unknown menu type: ${menu_type}"
-            return 1
-            ;;
-    esac
 
     local ascii_count=${#ascii_lines[@]}
     local menu_count=${#menu_lines[@]}
@@ -366,6 +356,22 @@ display_banner_with_menu() {
     (( notice_pad < 0 )) && notice_pad=0
     printf "%*s%b%s%b\n" "$notice_pad" "" "${BOLD}${BRIGHT_RED}" "$notice" "${RESET}"
     echo ""
+}
+
+# Render one of the named menus beside the banner.
+display_banner_with_menu() {
+    local menu_type="$1"
+    local -a menu_lines
+    case "$menu_type" in
+        main)       mapfile -t menu_lines < <(generate_main_menu) ;;
+        config)     mapfile -t menu_lines < <(generate_config_menu) ;;
+        kubernetes) mapfile -t menu_lines < <(generate_kubernetes_menu) ;;
+        *)
+            log_error "Unknown menu type: ${menu_type}"
+            return 1
+            ;;
+    esac
+    render_banner_with_lines "${menu_lines[@]}"
 }
 
 # Prompt rendered under each submenu. Hardcoded indent matches the menu layout.

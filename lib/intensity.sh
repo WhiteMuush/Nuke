@@ -73,12 +73,18 @@ nuke_level_label() {
 nuke_pick_level() {
     local title="${1:-Choose intensity}"
     {
-        nuke_subview "${title}"
-        printf '   %b[1]%b  %b   single, brief probe\n'    "${BRIGHT_RED}" "${RESET}" "$(nuke_level_label POKE)"
-        printf '   %b[2]%b  %b sustained, moderate\n'      "${BRIGHT_RED}" "${RESET}" "$(nuke_level_label STRESS)"
-        printf '   %b[3]%b  %b  multi-fault, wide blast\n' "${BRIGHT_RED}" "${RESET}" "$(nuke_level_label HAVOC)"
-        printf '   %b[4]%b  %b everything, full force\n'   "${BRIGHT_RED}" "${RESET}" "$(nuke_level_label NUKE)"
-        printf '   %b[0]%b  cancel\n\n'                    "${BRIGHT_RED}" "${RESET}"
+        clear
+        local -a lines=(
+            "${NUKE_BRAND_HEADER[@]}"
+            "${BOLD}${BRIGHT_RED}${title}${RESET}"
+            ""
+            "$(printf '%b[1]%b  %b   single, brief probe'    "${BRIGHT_RED}" "${RESET}" "$(nuke_level_label POKE)")"
+            "$(printf '%b[2]%b  %b sustained, moderate'      "${BRIGHT_RED}" "${RESET}" "$(nuke_level_label STRESS)")"
+            "$(printf '%b[3]%b  %b  multi-fault, wide blast' "${BRIGHT_RED}" "${RESET}" "$(nuke_level_label HAVOC)")"
+            "$(printf '%b[4]%b  %b everything, full force'   "${BRIGHT_RED}" "${RESET}" "$(nuke_level_label NUKE)")"
+            "$(printf '%b[0]%b  cancel'                      "${BRIGHT_RED}" "${RESET}")"
+        )
+        render_banner_with_lines "${lines[@]}"
         nuke_prompt "Intensity"
     } >&2
     local choice
