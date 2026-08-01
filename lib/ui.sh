@@ -89,6 +89,20 @@ NUKE_BRAND_HEADER=(
 )
 
 # ---------------------------------------------------------------------------
+# Two-column menu row: "[ln]  ltext        [rn]  rtext".
+# The left cell is padded on its VISIBLE width so colors never break alignment.
+# Pass an empty rn to render a single left cell.
+# ---------------------------------------------------------------------------
+_menu_row2() {
+    local ln="$1" lt="$2" rn="$3" rt="$4" width=22
+    local lplain="[${ln}]  ${lt}"
+    local pad=$(( width - ${#lplain} ))
+    (( pad < 0 )) && pad=0
+    printf '%b[%s]%b  %s%*s' "${BRIGHT_RED}" "${ln}" "${RESET}" "${lt}" "${pad}" ""
+    [[ -n "${rn}" ]] && printf '%b[%s]%b  %s' "${BRIGHT_RED}" "${rn}" "${RESET}" "${rt}"
+}
+
+# ---------------------------------------------------------------------------
 # Menu generators. Each prints its lines on stdout, one per line.
 # The sub-action labels below are placeholders — rename them per module.
 # ---------------------------------------------------------------------------
@@ -142,24 +156,17 @@ generate_kubernetes_menu() {
         ""
         "${DIM}Set scope, install Chaos Mesh, then fire a fault.${RESET}"
         ""
-        "${BRIGHT_RED}[1]${RESET}   Set scope"
-        "${BRIGHT_RED}[2]${RESET}   Status"
-        "${BRIGHT_RED}[3]${RESET}   Setup Chaos Mesh"
+        "$(_menu_row2 1 "Set scope"        2  "Status")"
+        "$(_menu_row2 3 "Setup Chaos Mesh" ""  "")"
         ""
         "${DIM}Faults (POKE -> NUKE!)${RESET}"
-        "${BRIGHT_RED}[4]${RESET}   Pod-kill"
-        "${BRIGHT_RED}[5]${RESET}   Pod-failure"
-        "${BRIGHT_RED}[6]${RESET}   Net delay"
-        "${BRIGHT_RED}[7]${RESET}   Net loss"
-        "${BRIGHT_RED}[8]${RESET}   Net partition"
-        "${BRIGHT_RED}[9]${RESET}   Stress CPU"
-        "${BRIGHT_RED}[10]${RESET}  Stress memory"
-        "${BRIGHT_RED}[11]${RESET}  DNS chaos"
-        "${BRIGHT_RED}[12]${RESET}  Time skew"
-        "${BRIGHT_RED}[13]${RESET}  Node drain"
+        "$(_menu_row2 4  "Pod-kill"      5  "Pod-failure")"
+        "$(_menu_row2 6  "Net delay"     7  "Net loss")"
+        "$(_menu_row2 8  "Net partition" 9  "Stress CPU")"
+        "$(_menu_row2 10 "Stress memory" 11 "DNS chaos")"
+        "$(_menu_row2 12 "Time skew"     13 "Node drain")"
         ""
-        "${BOLD}${BRIGHT_RED}[99]${RESET} ${BOLD}NUKE k8s${RESET} ${DIM}all vectors${RESET}"
-        "${BRIGHT_RED}[r]${RESET}   Recover (rollback)"
+        "$(_menu_row2 99 "NUKE k8s" r "Recover")"
         ""
         "${BRIGHT_RED}[0]${RESET}   Back to Main Menu"
     )
