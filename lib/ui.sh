@@ -39,13 +39,6 @@ NUKE_ASCII_ART=$(cat <<'ASCII'
 ASCII
 )
 
-# ---------------------------------------------------------------------------
-# NUKE wordmark reused by the main menu and the splash screen.
-# ---------------------------------------------------------------------------
-NUKE_WORDMARK=(
-    ""
-)
-
 BORDER_MENU=$(cat <<'BORDER'
 
     ⣿⣿⣿⠟⡇
@@ -181,13 +174,6 @@ generate_special_menu() {
 # ---------------------------------------------------------------------------
 # Splash screen displayed when the toolkit boots.
 # ---------------------------------------------------------------------------
-NUKE_INFO_PANEL=(
-    "${NUKE_WORDMARK[@]}"
-    ""
-    "${BRIGHT_MAGENTA}${BOLD}Interactive Bash Toolkit Skeleton${RESET}"
-    "${DIM}by Melvin PETIT${RESET}"
-)
-
 _strip_ansi() {
     sed -E 's/\x1B\[[0-9;?]*[ -/]*[@-~]//g; s/\x1B\][^\a]*\a//g'
 }
@@ -234,16 +220,23 @@ display_title_middle_screen() {
     cols=$(tput cols 2>/dev/null || echo 80)
     rows=$(tput lines 2>/dev/null || echo 24)
 
-    local -a lines=( "${NUKE_INFO_PANEL[@]}" )
-    local h=${#lines[@]}
+    local -a art_lines
+    mapfile -t art_lines <<< "$NUKE_ASCII_ART"
+    local art_count=${#art_lines[@]}
 
+    # Subtitle shown under the art.
+    local subtitle="Toolkit made by Melvin PETIT / WhiteMuush"
+
+    # Widest visible line (art chars are single width; subtitle counts too).
     local max_w=0 raw visible_len line
-    for line in "${lines[@]}"; do
+    for line in "${art_lines[@]}" "$subtitle"; do
         raw=$(printf "%s" "$line" | _strip_ansi)
         visible_len=${#raw}
         (( visible_len > max_w )) && max_w=$visible_len
     done
 
+    # Total block height: art + blank line + subtitle.
+    local h=$(( art_count + 2 ))
     local top=$(( (rows - h) / 2 ))
     (( top < 0 )) && top=0
     local left=$(( (cols - max_w) / 2 ))
@@ -255,9 +248,19 @@ display_title_middle_screen() {
         printf "\n"
     done
 
-    for line in "${lines[@]}"; do
-        printf "%*s%s\n" "$left" "" "$line"
+    # Art with the same vertical fire gradient as the menu banner.
+    local grad
+    for ((i=0; i<art_count; i++)); do
+        grad=$(_gradient_escape "$i" "$art_count")
+        printf "%*s%b%s%b\n" "$left" "" "$grad" "${art_lines[i]}" "${RESET}"
     done
+
+    printf "\n"
+
+    # Subtitle centered under the art.
+    local sub_pad=$(( (cols - ${#subtitle}) / 2 ))
+    (( sub_pad < 0 )) && sub_pad=0
+    printf "%*s%b%s%b\n" "$sub_pad" "" "${BOLD}${BRIGHT_RED}" "$subtitle" "${RESET}"
 }
 
 # ---------------------------------------------------------------------------
