@@ -17,6 +17,8 @@ source "${SCRIPT_DIR}/lib/runner.sh"
 source "${SCRIPT_DIR}/lib/safety.sh"
 # shellcheck source=lib/intensity.sh
 source "${SCRIPT_DIR}/lib/intensity.sh"
+# shellcheck source=lib/toolbox.sh
+source "${SCRIPT_DIR}/lib/toolbox.sh"
 # shellcheck source=lib/ui.sh
 source "${SCRIPT_DIR}/lib/ui.sh"
 # shellcheck source=lib/modules/config.sh
