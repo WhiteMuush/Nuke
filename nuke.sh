@@ -23,15 +23,21 @@ source "${SCRIPT_DIR}/lib/toolbox.sh"
 source "${SCRIPT_DIR}/lib/ui.sh"
 # shellcheck source=lib/modules/config.sh
 source "${SCRIPT_DIR}/lib/modules/config.sh"
-# shellcheck source=lib/modules/passive.sh
-source "${SCRIPT_DIR}/lib/modules/passive.sh"
-# shellcheck source=lib/modules/active.sh
-source "${SCRIPT_DIR}/lib/modules/active.sh"
-# shellcheck source=lib/modules/special.sh
-source "${SCRIPT_DIR}/lib/modules/special.sh"
+# shellcheck source=lib/modules/kubernetes.sh
+source "${SCRIPT_DIR}/lib/modules/kubernetes.sh"
+
+# Layer not built yet: show a clear notice instead of a broken placeholder.
+handle_coming_soon() {
+    local name="$1"
+    nuke_subview "${name^^} LAYER"
+    printf '   %b%s layer is coming soon.%b\n' "${BOLD}${BRIGHT_RED}" "${name}" "${RESET}"
+    printf '   %bAlready available: Kubernetes. Next up per the roadmap.%b\n' "${DIM}" "${RESET}"
+    press_enter_to_continue
+}
 
 main_loop() {
     local choice
+    nuke_arm_rollback
     display_title_middle_screen
     sleep 2
 
@@ -43,9 +49,10 @@ main_loop() {
 
         case "$choice" in
             1) handle_config_menu ;;
-            2) handle_passive_menu ;;
-            3) handle_active_menu ;;
-            4) handle_special_menu ;;
+            2) handle_kubernetes_menu ;;
+            3) handle_coming_soon "Docker" ;;
+            4) handle_coming_soon "Network" ;;
+            5) handle_coming_soon "Host" ;;
             0)
                 printf '\n%bExiting Nuke...%b\n' "${BRIGHT_MAGENTA}" "${RESET}"
                 exit 0

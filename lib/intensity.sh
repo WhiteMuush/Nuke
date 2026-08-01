@@ -67,19 +67,28 @@ nuke_level_label() {
     esac
 }
 
-# Interactive level picker. Echoes the chosen level name on stdout, or nothing
-# on cancel. Menu goes to stderr so stdout stays clean for capture.
+# Interactive level picker rendered as a full cleared sub-view (so it replaces
+# the current menu instead of stacking below it). The screen goes to stderr;
+# only the chosen level name is echoed on stdout for capture. Empty on cancel.
 nuke_pick_level() {
+    local title="${1:-Choose intensity}"
     {
-        printf '\n%bChoose intensity%b\n' "${BOLD}" "${RESET}"
-        printf '  1) %b  single, brief probe\n'      "$(nuke_level_label POKE)"
-        printf '  2) %b  sustained, moderate\n'      "$(nuke_level_label STRESS)"
-        printf '  3) %b  multi-fault, wide blast\n'  "$(nuke_level_label HAVOC)"
-        printf '  4) %b everything, full force\n'    "$(nuke_level_label NUKE)"
-        printf '  0) cancel\n'
+        clear
+        local -a lines=(
+            "${NUKE_BRAND_HEADER[@]}"
+            "${BOLD}${BRIGHT_RED}${title}${RESET}"
+            ""
+            "$(printf '%b[1]%b  %b   single, brief probe'    "${BRIGHT_RED}" "${RESET}" "$(nuke_level_label POKE)")"
+            "$(printf '%b[2]%b  %b sustained, moderate'      "${BRIGHT_RED}" "${RESET}" "$(nuke_level_label STRESS)")"
+            "$(printf '%b[3]%b  %b  multi-fault, wide blast' "${BRIGHT_RED}" "${RESET}" "$(nuke_level_label HAVOC)")"
+            "$(printf '%b[4]%b  %b everything, full force'   "${BRIGHT_RED}" "${RESET}" "$(nuke_level_label NUKE)")"
+            "$(printf '%b[0]%b  cancel'                      "${BRIGHT_RED}" "${RESET}")"
+        )
+        render_banner_with_lines "${lines[@]}"
+        nuke_prompt "Intensity"
     } >&2
     local choice
-    read -rp "Level: " choice
+    read -r choice
     case "${choice}" in
         1) printf 'POKE'   ;;
         2) printf 'STRESS' ;;

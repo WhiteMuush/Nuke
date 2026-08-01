@@ -20,10 +20,20 @@ declare -a NUKE_ROLLBACK_STACK=()
 # Rollback registry.
 # ---------------------------------------------------------------------------
 
-# Arm the auto-rollback trap. Any registered undo runs on INT/TERM so chaos
-# (tc rules, iptables, paused containers) never outlives the toolkit.
+# Arm the panic trap. Ctrl+C / SIGTERM heals everything, then quits, so chaos
+# (tc rules, iptables, paused containers) never outlives the toolkit and the
+# user always has a hard exit.
 nuke_arm_rollback() {
-    trap 'nuke_rollback_run' INT TERM
+    trap 'nuke_panic' INT TERM
+}
+
+# Emergency stop bound to Ctrl+C: roll back active chaos, then exit.
+nuke_panic() {
+    trap - INT TERM
+    printf '\n'
+    log_warn "Interrupted. Rolling back active chaos and exiting..."
+    nuke_rollback_run
+    exit 130
 }
 
 nuke_rollback_reset() {

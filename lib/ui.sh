@@ -76,22 +76,43 @@ BORDER
 # ---------------------------------------------------------------------------
 NUKE_BRAND_HEADER=(
     ""
-    "${BRIGHT_RED}▄▄▄    ▄▄▄   ▄▄▄  ▄▄▄   ▄▄▄   ▄▄▄    ▄▄▄▄▄▄▄      ▄▄▄ ${RESET}"
-    "${BRIGHT_RED}████▄  ███   ███  ███   ███ ▄███▀   ███▀▀▀▀▀      ███ ${RESET}"
-    "${BRIGHT_RED}███▀██▄███   ███  ███   ███████     ███▄▄         ███ ${RESET}"
-    "${BRIGHT_RED}███  ▀████   ███▄▄███   ███▀███▄    ███           ▀▀▀ ${RESET}"
-    "${BRIGHT_RED}███    ███   ▀██████▀   ███  ▀███   ▀███████      ███ ${RESET}"
+    "${BRIGHT_RED}${BOLD}Chaos & Resilience Toolkit ☢️${RESET}"
     ""
-    "${BRIGHT_RED}${BOLD}Server Stress & Resilience Toolkit ☢️${RESET}"
-    ""
-    "breaking point on purpose. Nuke generates heavy,"
-    "controlled load, saturates connections and hammers"
-    "endpoints to expose bottlenecks, timeouts and failure"
-    "modes before real traffic does."
-    ""
-    "${BOLD}🚩 Detonate only on hosts you own or are cleared to test. ${RESET}"
+    "${BOLD}🚩 Only detonate infra you own or are cleared to test. ${RESET}"
     ""
 )
+
+# ---------------------------------------------------------------------------
+# Two-column menu row: "[ln]  ltext        [rn]  rtext".
+# The left cell is padded on its VISIBLE width so colors never break alignment.
+# Pass an empty rn to render a single left cell.
+# ---------------------------------------------------------------------------
+_menu_row2() {
+    local ln="$1" lt="$2" rn="$3" rt="$4" width=22
+    local lplain="[${ln}]  ${lt}"
+    local pad=$(( width - ${#lplain} ))
+    (( pad < 0 )) && pad=0
+    printf '%b[%s]%b  %s%*s' "${BRIGHT_RED}" "${ln}" "${RESET}" "${lt}" "${pad}" ""
+    [[ -n "${rn}" ]] && printf '%b[%s]%b  %s' "${BRIGHT_RED}" "${rn}" "${RESET}" "${rt}"
+}
+
+# ---------------------------------------------------------------------------
+# Open an action screen: clear, draw the brand banner and a section title.
+# Every action/prompt calls this first so sub-views stay consistent with the
+# menus and the input always sits right under its own titled screen.
+# ---------------------------------------------------------------------------
+nuke_subview() {
+    local title="$1"
+    clear
+    local -a lines=( "${NUKE_BRAND_HEADER[@]}" )
+    [[ -n "${title}" ]] && lines+=( "${BOLD}${BRIGHT_RED}${title}${RESET}" "" )
+    render_banner_with_lines "${lines[@]}"
+}
+
+# Styled, indented prompt line used across sub-views for consistency.
+nuke_prompt() {
+    printf '   %b▪ %s : %b' "${BOLD}${BRIGHT_RED}" "$1" "${RESET}"
+}
 
 # ---------------------------------------------------------------------------
 # Menu generators. Each prints its lines on stdout, one per line.
@@ -100,14 +121,18 @@ NUKE_BRAND_HEADER=(
 generate_main_menu() {
     local -a menu_lines=(
         "${NUKE_BRAND_HEADER[@]}"
+        "Inject real failures into your infra and prove it survives."
+        "Escalate from a gentle POKE to an all-out NUKE!, always"
+        "scoped, always with automatic rollback."
+        ""
+        "${DIM}Pick a target layer:${RESET}"
         ""
         "${BRIGHT_RED}[1]${RESET}  Configuration"
         ""
-        "${BRIGHT_RED}[2]${RESET}  Passive Module"
-        ""
-        "${BRIGHT_RED}[3]${RESET}  Active Module"
-        ""
-        "${BRIGHT_RED}[4]${RESET}  Special Module"
+        "${BRIGHT_RED}[2]${RESET}  Kubernetes   ${GREEN}ready${RESET}"
+        "${BRIGHT_RED}[3]${RESET}  Docker       ${DIM}soon${RESET}"
+        "${BRIGHT_RED}[4]${RESET}  Network      ${DIM}soon${RESET}"
+        "${BRIGHT_RED}[5]${RESET}  Host         ${DIM}soon${RESET}"
         ""
         "${BRIGHT_RED}[0]${RESET}  Exit"
     )
@@ -120,64 +145,43 @@ generate_config_menu() {
         "${NUKE_BRAND_HEADER[@]}"
         "${BRIGHT_RED}${BOLD}CONFIGURATION${RESET}"
         ""
-        "Target : ${BRIGHT_RED}${NUKE_TARGET:-Not set}${RESET}"
         "Output : ${BRIGHT_RED}${NUKE_OUTPUT_DIR}${RESET}"
+        "Scope  : ${BRIGHT_RED}${NUKE_SCOPE:-Not set}${RESET}"
         ""
-        "${BRIGHT_RED}[1]${RESET}  Set Target (IP/Hostname)"
-        "${BRIGHT_RED}[2]${RESET}  Set Output Directory"
+        "${DIM}Scope is set inside each layer (e.g. the k8s namespace).${RESET}"
         ""
-        "${BRIGHT_RED}[0]${RESET}  Back to Main Menu"
-    )
-    printf '%s\n' "${menu_lines[@]}"
-}
-
-generate_passive_menu() {
-    local -a menu_lines=(
-        "${NUKE_BRAND_HEADER[@]}"
-        "${BRIGHT_RED}${BOLD}PASSIVE MODULE${RESET}"
-        ""
-        "Placeholder actions — wire your own tools here."
-        ""
-        "Target : ${BRIGHT_RED}${NUKE_TARGET:-Not set}${RESET}"
-        ""
-        "${BRIGHT_RED}[1]${RESET}  Action One"
-        "${BRIGHT_RED}[2]${RESET}  Action Two"
+        "${BRIGHT_RED}[1]${RESET}  Set output directory"
+        "${BRIGHT_RED}[2]${RESET}  Detect environment (installed tools)"
         ""
         "${BRIGHT_RED}[0]${RESET}  Back to Main Menu"
     )
     printf '%s\n' "${menu_lines[@]}"
 }
 
-generate_active_menu() {
+generate_kubernetes_menu() {
     local -a menu_lines=(
         "${NUKE_BRAND_HEADER[@]}"
-        "${BRIGHT_RED}${BOLD}ACTIVE MODULE${RESET}"
+        "${BRIGHT_RED}${BOLD}KUBERNETES LAYER${RESET}"
         ""
-        "Placeholder actions — wire your own tools here."
+        "Namespace : ${BRIGHT_RED}${NUKE_K8S_NAMESPACE:-Not set}${RESET}"
+        "Scope     : ${BRIGHT_RED}${NUKE_SCOPE:-Not set}${RESET}"
         ""
-        "Target : ${BRIGHT_RED}${NUKE_TARGET:-Not set}${RESET}"
+        "${YELLOW}Set scope, install Chaos Mesh, then fire a fault.${RESET}"
         ""
-        "${BRIGHT_RED}[1]${RESET}  Action One"
-        "${BRIGHT_RED}[2]${RESET}  Action Two"
+        "$(_menu_row2 1 "Set scope"        2  "Status")"
+        "$(_menu_row2 3 "Setup Chaos Mesh" ""  "")"
         ""
-        "${BRIGHT_RED}[0]${RESET}  Back to Main Menu"
-    )
-    printf '%s\n' "${menu_lines[@]}"
-}
-
-generate_special_menu() {
-    local -a menu_lines=(
-        "${NUKE_BRAND_HEADER[@]}"
-        "${BRIGHT_RED}${BOLD}SPECIAL MODULE${RESET}"
+        "${DIM}☢️  Faults${RESET}"
         ""
-        "Placeholder actions — wire your own tools here."
+        "$(_menu_row2 4  "Pod-kill"         5  "Pod-failure")"
+        "$(_menu_row2 6  "Net delay"        7  "Net loss")"
+        "$(_menu_row2 8  "Net partition"    9  "Stress CPU")"
+        "$(_menu_row2 10 "Stress memory"    11 "DNS chaos")"
+        "$(_menu_row2 12 "Time skew"        13 "Node drain")"
         ""
-        "Target : ${BRIGHT_RED}${NUKE_TARGET:-Not set}${RESET}"
+        "$(_menu_row2 99 "NUKE k8s" r "Recover")"
         ""
-        "${BRIGHT_RED}[1]${RESET}  Action One"
-        "${BRIGHT_RED}[2]${RESET}  View Results"
-        ""
-        "${BRIGHT_RED}[0]${RESET}  Back to Main Menu"
+        "${BRIGHT_RED}[0]${RESET}   Back to Main Menu"
     )
     printf '%s\n' "${menu_lines[@]}"
 }
@@ -276,26 +280,16 @@ display_title_middle_screen() {
 }
 
 # ---------------------------------------------------------------------------
-# Side-by-side rendering of the ASCII art and the active menu.
+# Core renderer: draw the given right-column lines beside the skull art and the
+# yellow border. Every screen (menus and action sub-views) goes through this so
+# they all share the same look. Pass the right-column lines as arguments.
 # ---------------------------------------------------------------------------
-display_banner_with_menu() {
-    local menu_type="$1"
-    local -a ascii_lines menu_lines border_lines
+render_banner_with_lines() {
+    local -a menu_lines=( "$@" )
+    local -a ascii_lines border_lines
 
     mapfile -t ascii_lines <<< "$NUKE_ASCII_ART"
     mapfile -t border_lines <<< "$BORDER_MENU"
-
-    case "$menu_type" in
-        main)    mapfile -t menu_lines < <(generate_main_menu) ;;
-        config)  mapfile -t menu_lines < <(generate_config_menu) ;;
-        passive) mapfile -t menu_lines < <(generate_passive_menu) ;;
-        active)  mapfile -t menu_lines < <(generate_active_menu) ;;
-        special) mapfile -t menu_lines < <(generate_special_menu) ;;
-        *)
-            log_error "Unknown menu type: ${menu_type}"
-            return 1
-            ;;
-    esac
 
     local ascii_count=${#ascii_lines[@]}
     local menu_count=${#menu_lines[@]}
@@ -306,10 +300,15 @@ display_banner_with_menu() {
         (( ${#line} > max_ascii_width )) && max_ascii_width=${#line}
     done
 
-    local border_count=${#border_lines[@]}
-    (( border_count > max_lines )) && max_lines=$border_count
-    local max_border_width=0
+    # Cycle the border glyphs so the border always spans the full content
+    # height; the menu can never extend past its left border.
+    local -a border_glyphs=()
     for line in "${border_lines[@]}"; do
+        [[ -n "${line// /}" ]] && border_glyphs+=( "$line" )
+    done
+    local nglyph=${#border_glyphs[@]}
+    local max_border_width=0
+    for line in "${border_glyphs[@]}"; do
         (( ${#line} > max_border_width )) && max_border_width=${#line}
     done
 
@@ -330,7 +329,8 @@ display_banner_with_menu() {
         local ascii_line="${ascii_lines[i]:-}"
         local menu_line="${menu_lines[i]:-}"
 
-        local border_line="${border_lines[i]:-}"
+        local border_line=""
+        (( nglyph > 0 )) && border_line="${border_glyphs[i % nglyph]}"
 
         local grad
         grad=$(_gradient_escape "$i" "$ascii_count")
@@ -356,6 +356,22 @@ display_banner_with_menu() {
     (( notice_pad < 0 )) && notice_pad=0
     printf "%*s%b%s%b\n" "$notice_pad" "" "${BOLD}${BRIGHT_RED}" "$notice" "${RESET}"
     echo ""
+}
+
+# Render one of the named menus beside the banner.
+display_banner_with_menu() {
+    local menu_type="$1"
+    local -a menu_lines
+    case "$menu_type" in
+        main)       mapfile -t menu_lines < <(generate_main_menu) ;;
+        config)     mapfile -t menu_lines < <(generate_config_menu) ;;
+        kubernetes) mapfile -t menu_lines < <(generate_kubernetes_menu) ;;
+        *)
+            log_error "Unknown menu type: ${menu_type}"
+            return 1
+            ;;
+    esac
+    render_banner_with_lines "${menu_lines[@]}"
 }
 
 # Prompt rendered under each submenu. Hardcoded indent matches the menu layout.

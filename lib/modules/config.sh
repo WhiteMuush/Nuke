@@ -7,16 +7,8 @@ fi
 NUKE_MODULE_CONFIG_LOADED=1
 
 # ---------------------------------------------------------------------------
-# Quick checks used by the action modules. Each prompts if the corresponding
-# global is empty.
+# Shared check used by the layers.
 # ---------------------------------------------------------------------------
-require_target() {
-    if [[ -z "${NUKE_TARGET}" ]]; then
-        log_warn "No target set."
-        NUKE_TARGET=$(prompt_value "Enter target IP/hostname")
-    fi
-}
-
 ensure_output_dir() {
     mkdir -p "${NUKE_OUTPUT_DIR}"
 }
@@ -24,15 +16,14 @@ ensure_output_dir() {
 # ---------------------------------------------------------------------------
 # Configuration menu actions.
 # ---------------------------------------------------------------------------
-config_set_target() {
-    printf '\n%bSetting Target%b\n' "${BRIGHT_MAGENTA}" "${RESET}"
-    NUKE_TARGET=$(prompt_value "Target IP/hostname")
-    log_success "Target set: ${NUKE_TARGET}"
+config_detect_environment() {
+    nuke_subview "DETECT ENVIRONMENT"
+    nuke_detect_env
     press_enter_to_continue
 }
 
 config_set_output_dir() {
-    printf '\n%bSetting Output Directory%b\n' "${BRIGHT_MAGENTA}" "${RESET}"
+    nuke_subview "OUTPUT DIRECTORY"
     local custom_dir
     custom_dir=$(prompt_value "Directory name" "${NUKE_OUTPUT_DIR}")
     NUKE_OUTPUT_DIR="${custom_dir}"
@@ -50,8 +41,8 @@ handle_config_menu() {
         read -r choice
 
         case "$choice" in
-            1) config_set_target ;;
-            2) config_set_output_dir ;;
+            1) config_set_output_dir ;;
+            2) config_detect_environment ;;
             0) return ;;
             *)
                 printf '\n%bInvalid choice!%b\n' "${BRIGHT_RED}" "${RESET}"
