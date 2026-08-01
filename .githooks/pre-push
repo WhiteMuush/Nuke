@@ -1,6 +1,37 @@
 #!/usr/bin/env bash
-# Pre-push hook: run the full CI check suite locally before allowing a push.
+# Pre-push hook:
+#   1. refuse to push any unsigned commit (local enforcement, since GitHub
+#      "require signed commits" needs Pro or a public repo);
+#   2. run the full CI check suite (scripts/ci.sh).
 # Enable it with:  git config core.hooksPath .githooks
-# Runs exactly what GitHub Actions runs (scripts/ci.sh).
 
-exec "$(git rev-parse --show-toplevel)/scripts/ci.sh"
+set -uo pipefail
+root="$(git rev-parse --show-toplevel)"
+zero='0000000000000000000000000000000000000000'
+
+unsigned=""
+while read -r _local_ref local_sha _remote_ref remote_sha; do
+    [[ "${local_sha}" == "${zero}" ]] && continue   # branch deletion
+
+    if [[ "${remote_sha}" =~ ^0+$ ]]; then
+        # New branch: only inspect commits not already on any remote.
+        range=( "${local_sha}" --not --remotes )
+    else
+        range=( "${remote_sha}..${local_sha}" )
+    fi
+
+    while read -r sha; do
+        [[ -z "${sha}" ]] && continue
+        if [[ "$(git log -1 --pretty='%G?' "${sha}")" == "N" ]]; then
+            unsigned+="  ${sha} $(git log -1 --pretty='%s' "${sha}")"$'\n'
+        fi
+    done < <(git rev-list "${range[@]}")
+done
+
+if [[ -n "${unsigned}" ]]; then
+    printf '\033[31mpush blocked: unsigned commit(s)\033[0m\n%s' "${unsigned}"
+    printf 'All commits must be signed. Sign with: git commit --amend -S (or rebase -S).\n'
+    exit 1
+fi
+
+exec "${root}/scripts/ci.sh"
