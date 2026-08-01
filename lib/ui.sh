@@ -109,6 +109,8 @@ generate_main_menu() {
         ""
         "${BRIGHT_RED}[4]${RESET}  Special Module"
         ""
+        "${BRIGHT_RED}[5]${RESET}  Kubernetes Layer"
+        ""
         "${BRIGHT_RED}[0]${RESET}  Exit"
     )
     printf '%s\n' "${menu_lines[@]}"
@@ -176,6 +178,23 @@ generate_special_menu() {
         ""
         "${BRIGHT_RED}[1]${RESET}  Action One"
         "${BRIGHT_RED}[2]${RESET}  View Results"
+        ""
+        "${BRIGHT_RED}[0]${RESET}  Back to Main Menu"
+    )
+    printf '%s\n' "${menu_lines[@]}"
+}
+
+generate_kubernetes_menu() {
+    local -a menu_lines=(
+        "${NUKE_BRAND_HEADER[@]}"
+        "${BRIGHT_RED}${BOLD}KUBERNETES LAYER${RESET}"
+        ""
+        "Namespace : ${BRIGHT_RED}${NUKE_K8S_NAMESPACE:-Not set}${RESET}"
+        "Scope     : ${BRIGHT_RED}${NUKE_SCOPE:-Not set}${RESET}"
+        ""
+        "${BRIGHT_RED}[1]${RESET}  Set scope (namespace / label)"
+        "${BRIGHT_RED}[2]${RESET}  Status (pods in scope)"
+        "${BRIGHT_RED}[3]${RESET}  Pod-kill  (POKE -> NUKE!)"
         ""
         "${BRIGHT_RED}[0]${RESET}  Back to Main Menu"
     )
@@ -291,6 +310,7 @@ display_banner_with_menu() {
         passive) mapfile -t menu_lines < <(generate_passive_menu) ;;
         active)  mapfile -t menu_lines < <(generate_active_menu) ;;
         special) mapfile -t menu_lines < <(generate_special_menu) ;;
+        kubernetes) mapfile -t menu_lines < <(generate_kubernetes_menu) ;;
         *)
             log_error "Unknown menu type: ${menu_type}"
             return 1
