@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Pre-push hook: run the full CI check suite locally before allowing a push.
+# Enable it with:  git config core.hooksPath .githooks
+# Runs exactly what GitHub Actions runs (scripts/ci.sh).
+
+exec "$(git rev-parse --show-toplevel)/scripts/ci.sh"
