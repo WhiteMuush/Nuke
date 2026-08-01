@@ -306,10 +306,15 @@ render_banner_with_lines() {
         (( ${#line} > max_ascii_width )) && max_ascii_width=${#line}
     done
 
-    local border_count=${#border_lines[@]}
-    (( border_count > max_lines )) && max_lines=$border_count
-    local max_border_width=0
+    # Cycle the border glyphs so the border always spans the full content
+    # height; the menu can never extend past its left border.
+    local -a border_glyphs=()
     for line in "${border_lines[@]}"; do
+        [[ -n "${line// /}" ]] && border_glyphs+=( "$line" )
+    done
+    local nglyph=${#border_glyphs[@]}
+    local max_border_width=0
+    for line in "${border_glyphs[@]}"; do
         (( ${#line} > max_border_width )) && max_border_width=${#line}
     done
 
@@ -330,7 +335,8 @@ render_banner_with_lines() {
         local ascii_line="${ascii_lines[i]:-}"
         local menu_line="${menu_lines[i]:-}"
 
-        local border_line="${border_lines[i]:-}"
+        local border_line=""
+        (( nglyph > 0 )) && border_line="${border_glyphs[i % nglyph]}"
 
         local grad
         grad=$(_gradient_escape "$i" "$ascii_count")
