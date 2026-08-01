@@ -103,6 +103,26 @@ _menu_row2() {
 }
 
 # ---------------------------------------------------------------------------
+# Open an action screen: clear, draw the brand banner and a section title.
+# Every action/prompt calls this first so sub-views stay consistent with the
+# menus and the input always sits right under its own titled screen.
+# ---------------------------------------------------------------------------
+nuke_subview() {
+    local title="$1" line
+    clear
+    printf '\n'
+    for line in "${NUKE_BRAND_HEADER[@]}"; do
+        printf '   %b\n' "${line}"
+    done
+    [[ -n "${title}" ]] && printf '   %b%s%b\n\n' "${BOLD}${BRIGHT_RED}" "${title}" "${RESET}"
+}
+
+# Styled, indented prompt line used across sub-views for consistency.
+nuke_prompt() {
+    printf '   %b▪ %s : %b' "${BOLD}${BRIGHT_RED}" "$1" "${RESET}"
+}
+
+# ---------------------------------------------------------------------------
 # Menu generators. Each prints its lines on stdout, one per line.
 # The sub-action labels below are placeholders — rename them per module.
 # ---------------------------------------------------------------------------
@@ -159,12 +179,13 @@ generate_kubernetes_menu() {
         "$(_menu_row2 1 "Set scope"        2  "Status")"
         "$(_menu_row2 3 "Setup Chaos Mesh" ""  "")"
         ""
-        "${DIM}Faults (POKE -> NUKE!)${RESET}"
-        "$(_menu_row2 4  "Pod-kill"      5  "Pod-failure")"
-        "$(_menu_row2 6  "Net delay"     7  "Net loss")"
-        "$(_menu_row2 8  "Net partition" 9  "Stress CPU")"
-        "$(_menu_row2 10 "Stress memory" 11 "DNS chaos")"
-        "$(_menu_row2 12 "Time skew"     13 "Node drain")"
+        "${DIM}Faults Menu${RESET}"
+        ""
+        "$(_menu_row2 4  "Pod-kill"         5  "Pod-failure")"
+        "$(_menu_row2 6  "Net delay"        7  "Net loss")"
+        "$(_menu_row2 8  "Net partition"    9  "Stress CPU")"
+        "$(_menu_row2 10 "Stress memory"    11 "DNS chaos")"
+        "$(_menu_row2 12 "Time skew"        13 "Node drain")"
         ""
         "$(_menu_row2 99 "NUKE k8s" r "Recover")"
         ""

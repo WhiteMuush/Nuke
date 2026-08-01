@@ -29,9 +29,9 @@ k8s_current_context() {
 # Set the layer scope: namespace (required) and an optional label selector.
 # Records it in NUKE_SCOPE so the safety gate recognizes it.
 k8s_set_scope() {
+    nuke_subview "SET SCOPE"
     k8s_available || { press_enter_to_continue; return 1; }
 
-    printf '\n%bKubernetes scope%b\n' "${BRIGHT_MAGENTA}" "${RESET}"
     log_info "Context: $(k8s_current_context)"
 
     local ns
@@ -58,9 +58,9 @@ _k8s_selector_args() {
 
 # Show cluster + scope status and the pods currently in range.
 k8s_status() {
+    nuke_subview "STATUS"
     k8s_available || { press_enter_to_continue; return 1; }
 
-    printf '\n%bKubernetes status%b\n' "${BRIGHT_MAGENTA}" "${RESET}"
     log_info "Context   : $(k8s_current_context)"
     log_info "Namespace : ${NUKE_K8S_NAMESPACE:-<not set>}"
     log_info "Label     : ${NUKE_K8S_LABEL:-<none>}"
@@ -148,6 +148,7 @@ k8s_chaos_mesh_ready() {
 # Install Chaos Mesh via Helm. Uses containerd settings that match kind; on a
 # managed cluster the defaults apply. Idempotent-ish (helm upgrade --install).
 k8s_setup_chaos_mesh() {
+    nuke_subview "SETUP CHAOS MESH"
     k8s_available || { press_enter_to_continue; return 1; }
     if k8s_chaos_mesh_ready; then
         log_success "Chaos Mesh already installed."
@@ -339,6 +340,7 @@ k8s_node_drain() {
 
 # --- All-out NUKE: every vector at once ------------------------------------
 k8s_nuke_all() {
+    nuke_subview "NUKE k8s"
     k8s_available || return 1
     k8s_chaos_mesh_ready || { log_error "Chaos Mesh not installed. Run 'Setup Chaos Mesh' first."; return 1; }
     nuke_require_scope || return 1
@@ -359,6 +361,7 @@ k8s_nuke_all() {
 
 # Stop everything now: run every registered rollback (delete CRDs, uncordon).
 k8s_recover() {
+    nuke_subview "RECOVER"
     log_step "Recovering: clearing all active chaos..."
     nuke_rollback_run
     press_enter_to_continue
@@ -369,14 +372,9 @@ k8s_recover() {
 # ---------------------------------------------------------------------------
 # Pick an intensity (full sub-view), then run the fault on a clean screen.
 _k8s_run_fault() {
-    local fn="$1" label="$2" level line
+    local fn="$1" label="$2" level
     level="$(nuke_pick_level "Intensity for ${label}")" || return 0
-    clear
-    printf '\n'
-    for line in "${NUKE_BRAND_HEADER[@]}"; do
-        printf '   %b\n' "${line}"
-    done
-    printf '   %b%s @ %s%b\n' "${BOLD}${BRIGHT_RED}" "${label}" "$(nuke_level_label "${level}")" "${RESET}"
+    nuke_subview "${label} @ $(nuke_level_label "${level}")"
     "${fn}" "${level}"
     press_enter_to_continue
 }

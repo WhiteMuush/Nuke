@@ -29,10 +29,9 @@ source "${SCRIPT_DIR}/lib/modules/kubernetes.sh"
 # Layer not built yet: show a clear notice instead of a broken placeholder.
 handle_coming_soon() {
     local name="$1"
-    clear
-    display_banner_with_menu "main"
-    printf '\n%b%s layer is coming soon.%b\n' "${BOLD}${BRIGHT_RED}" "${name}" "${RESET}"
-    printf '%bAlready available: Kubernetes. Next up per the roadmap.%b\n' "${DIM}" "${RESET}"
+    nuke_subview "${name^^} LAYER"
+    printf '   %b%s layer is coming soon.%b\n' "${BOLD}${BRIGHT_RED}" "${name}" "${RESET}"
+    printf '   %bAlready available: Kubernetes. Next up per the roadmap.%b\n' "${DIM}" "${RESET}"
     press_enter_to_continue
 }
 

@@ -73,19 +73,13 @@ nuke_level_label() {
 nuke_pick_level() {
     local title="${1:-Choose intensity}"
     {
-        clear
-        printf '\n'
-        local line
-        for line in "${NUKE_BRAND_HEADER[@]}"; do
-            printf '   %b\n' "${line}"
-        done
-        printf '   %b%s%b\n\n' "${BOLD}${BRIGHT_RED}" "${title}" "${RESET}"
+        nuke_subview "${title}"
         printf '   %b[1]%b  %b   single, brief probe\n'    "${BRIGHT_RED}" "${RESET}" "$(nuke_level_label POKE)"
         printf '   %b[2]%b  %b sustained, moderate\n'      "${BRIGHT_RED}" "${RESET}" "$(nuke_level_label STRESS)"
         printf '   %b[3]%b  %b  multi-fault, wide blast\n' "${BRIGHT_RED}" "${RESET}" "$(nuke_level_label HAVOC)"
         printf '   %b[4]%b  %b everything, full force\n'   "${BRIGHT_RED}" "${RESET}" "$(nuke_level_label NUKE)"
         printf '   %b[0]%b  cancel\n\n'                    "${BRIGHT_RED}" "${RESET}"
-        printf '   %b▪ Intensity : %b' "${BOLD}${BRIGHT_RED}" "${RESET}"
+        nuke_prompt "Intensity"
     } >&2
     local choice
     read -r choice

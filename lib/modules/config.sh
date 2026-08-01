@@ -17,13 +17,13 @@ ensure_output_dir() {
 # Configuration menu actions.
 # ---------------------------------------------------------------------------
 config_detect_environment() {
-    printf '\n%bEnvironment%b\n' "${BRIGHT_MAGENTA}" "${RESET}"
+    nuke_subview "DETECT ENVIRONMENT"
     nuke_detect_env
     press_enter_to_continue
 }
 
 config_set_output_dir() {
-    printf '\n%bSetting Output Directory%b\n' "${BRIGHT_MAGENTA}" "${RESET}"
+    nuke_subview "OUTPUT DIRECTORY"
     local custom_dir
     custom_dir=$(prompt_value "Directory name" "${NUKE_OUTPUT_DIR}")
     NUKE_OUTPUT_DIR="${custom_dir}"
