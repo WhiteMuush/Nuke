@@ -82,14 +82,9 @@ NUKE_BRAND_HEADER=(
     "${BRIGHT_RED}███  ▀████   ███▄▄███   ███▀███▄    ███           ▀▀▀ ${RESET}"
     "${BRIGHT_RED}███    ███   ▀██████▀   ███  ▀███   ▀███████      ███ ${RESET}"
     ""
-    "${BRIGHT_RED}${BOLD}Server Stress & Resilience Toolkit ☢️${RESET}"
+    "${BRIGHT_RED}${BOLD}Chaos & Resilience Toolkit ☢️${RESET}"
     ""
-    "breaking point on purpose. Nuke generates heavy,"
-    "controlled load, saturates connections and hammers"
-    "endpoints to expose bottlenecks, timeouts and failure"
-    "modes before real traffic does."
-    ""
-    "${BOLD}🚩 Detonate only on hosts you own or are cleared to test. ${RESET}"
+    "${BOLD}🚩 Only detonate infra you own or are cleared to test. ${RESET}"
     ""
 )
 
@@ -100,16 +95,18 @@ NUKE_BRAND_HEADER=(
 generate_main_menu() {
     local -a menu_lines=(
         "${NUKE_BRAND_HEADER[@]}"
+        "Inject real failures into your infra and prove it survives."
+        "Escalate from a gentle POKE to an all-out NUKE!, always"
+        "scoped, always with automatic rollback."
+        ""
+        "${DIM}Pick a target layer:${RESET}"
         ""
         "${BRIGHT_RED}[1]${RESET}  Configuration"
         ""
-        "${BRIGHT_RED}[2]${RESET}  Passive Module"
-        ""
-        "${BRIGHT_RED}[3]${RESET}  Active Module"
-        ""
-        "${BRIGHT_RED}[4]${RESET}  Special Module"
-        ""
-        "${BRIGHT_RED}[5]${RESET}  Kubernetes Layer"
+        "${BRIGHT_RED}[2]${RESET}  Kubernetes   ${GREEN}ready${RESET}"
+        "${BRIGHT_RED}[3]${RESET}  Docker       ${DIM}soon${RESET}"
+        "${BRIGHT_RED}[4]${RESET}  Network      ${DIM}soon${RESET}"
+        "${BRIGHT_RED}[5]${RESET}  Host         ${DIM}soon${RESET}"
         ""
         "${BRIGHT_RED}[0]${RESET}  Exit"
     )
@@ -122,62 +119,13 @@ generate_config_menu() {
         "${NUKE_BRAND_HEADER[@]}"
         "${BRIGHT_RED}${BOLD}CONFIGURATION${RESET}"
         ""
-        "Target : ${BRIGHT_RED}${NUKE_TARGET:-Not set}${RESET}"
         "Output : ${BRIGHT_RED}${NUKE_OUTPUT_DIR}${RESET}"
+        "Scope  : ${BRIGHT_RED}${NUKE_SCOPE:-Not set}${RESET}"
         ""
-        "${BRIGHT_RED}[1]${RESET}  Set Target (IP/Hostname)"
-        "${BRIGHT_RED}[2]${RESET}  Set Output Directory"
+        "${DIM}Scope is set inside each layer (e.g. the k8s namespace).${RESET}"
         ""
-        "${BRIGHT_RED}[0]${RESET}  Back to Main Menu"
-    )
-    printf '%s\n' "${menu_lines[@]}"
-}
-
-generate_passive_menu() {
-    local -a menu_lines=(
-        "${NUKE_BRAND_HEADER[@]}"
-        "${BRIGHT_RED}${BOLD}PASSIVE MODULE${RESET}"
-        ""
-        "Placeholder actions — wire your own tools here."
-        ""
-        "Target : ${BRIGHT_RED}${NUKE_TARGET:-Not set}${RESET}"
-        ""
-        "${BRIGHT_RED}[1]${RESET}  Action One"
-        "${BRIGHT_RED}[2]${RESET}  Action Two"
-        ""
-        "${BRIGHT_RED}[0]${RESET}  Back to Main Menu"
-    )
-    printf '%s\n' "${menu_lines[@]}"
-}
-
-generate_active_menu() {
-    local -a menu_lines=(
-        "${NUKE_BRAND_HEADER[@]}"
-        "${BRIGHT_RED}${BOLD}ACTIVE MODULE${RESET}"
-        ""
-        "Placeholder actions — wire your own tools here."
-        ""
-        "Target : ${BRIGHT_RED}${NUKE_TARGET:-Not set}${RESET}"
-        ""
-        "${BRIGHT_RED}[1]${RESET}  Action One"
-        "${BRIGHT_RED}[2]${RESET}  Action Two"
-        ""
-        "${BRIGHT_RED}[0]${RESET}  Back to Main Menu"
-    )
-    printf '%s\n' "${menu_lines[@]}"
-}
-
-generate_special_menu() {
-    local -a menu_lines=(
-        "${NUKE_BRAND_HEADER[@]}"
-        "${BRIGHT_RED}${BOLD}SPECIAL MODULE${RESET}"
-        ""
-        "Placeholder actions — wire your own tools here."
-        ""
-        "Target : ${BRIGHT_RED}${NUKE_TARGET:-Not set}${RESET}"
-        ""
-        "${BRIGHT_RED}[1]${RESET}  Action One"
-        "${BRIGHT_RED}[2]${RESET}  View Results"
+        "${BRIGHT_RED}[1]${RESET}  Set output directory"
+        "${BRIGHT_RED}[2]${RESET}  Detect environment (installed tools)"
         ""
         "${BRIGHT_RED}[0]${RESET}  Back to Main Menu"
     )
@@ -192,9 +140,11 @@ generate_kubernetes_menu() {
         "Namespace : ${BRIGHT_RED}${NUKE_K8S_NAMESPACE:-Not set}${RESET}"
         "Scope     : ${BRIGHT_RED}${NUKE_SCOPE:-Not set}${RESET}"
         ""
-        "${BRIGHT_RED}[1]${RESET}  Set scope (namespace / label)"
-        "${BRIGHT_RED}[2]${RESET}  Status (pods in scope)"
-        "${BRIGHT_RED}[3]${RESET}  Pod-kill  (POKE -> NUKE!)"
+        "${DIM}Set a scope first, then run a fault at your chosen intensity.${RESET}"
+        ""
+        "${BRIGHT_RED}[1]${RESET}  Set scope       ${DIM}namespace + optional label${RESET}"
+        "${BRIGHT_RED}[2]${RESET}  Status          ${DIM}list pods in scope${RESET}"
+        "${BRIGHT_RED}[3]${RESET}  Pod-kill        ${DIM}delete pods, POKE -> NUKE!${RESET}"
         ""
         "${BRIGHT_RED}[0]${RESET}  Back to Main Menu"
     )
@@ -307,9 +257,6 @@ display_banner_with_menu() {
     case "$menu_type" in
         main)    mapfile -t menu_lines < <(generate_main_menu) ;;
         config)  mapfile -t menu_lines < <(generate_config_menu) ;;
-        passive) mapfile -t menu_lines < <(generate_passive_menu) ;;
-        active)  mapfile -t menu_lines < <(generate_active_menu) ;;
-        special) mapfile -t menu_lines < <(generate_special_menu) ;;
         kubernetes) mapfile -t menu_lines < <(generate_kubernetes_menu) ;;
         *)
             log_error "Unknown menu type: ${menu_type}"
