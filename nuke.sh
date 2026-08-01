@@ -13,6 +13,8 @@ source "${SCRIPT_DIR}/lib/core.sh"
 source "${SCRIPT_DIR}/lib/installer.sh"
 # shellcheck source=lib/runner.sh
 source "${SCRIPT_DIR}/lib/runner.sh"
+# shellcheck source=lib/safety.sh
+source "${SCRIPT_DIR}/lib/safety.sh"
 # shellcheck source=lib/ui.sh
 source "${SCRIPT_DIR}/lib/ui.sh"
 # shellcheck source=lib/modules/config.sh
