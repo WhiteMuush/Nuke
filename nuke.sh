@@ -11,6 +11,14 @@ readonly SCRIPT_DIR
 source "${SCRIPT_DIR}/lib/core.sh"
 # shellcheck source=lib/installer.sh
 source "${SCRIPT_DIR}/lib/installer.sh"
+# shellcheck source=lib/runner.sh
+source "${SCRIPT_DIR}/lib/runner.sh"
+# shellcheck source=lib/safety.sh
+source "${SCRIPT_DIR}/lib/safety.sh"
+# shellcheck source=lib/intensity.sh
+source "${SCRIPT_DIR}/lib/intensity.sh"
+# shellcheck source=lib/toolbox.sh
+source "${SCRIPT_DIR}/lib/toolbox.sh"
 # shellcheck source=lib/ui.sh
 source "${SCRIPT_DIR}/lib/ui.sh"
 # shellcheck source=lib/modules/config.sh

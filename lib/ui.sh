@@ -71,27 +71,35 @@ BORDER
 
 
 # ---------------------------------------------------------------------------
+# Shared NUKE brand header. Shown on the main menu and every sub-menu so the
+# toolkit identity and the safety warning stay visible throughout.
+# ---------------------------------------------------------------------------
+NUKE_BRAND_HEADER=(
+    ""
+    "${BRIGHT_RED}▄▄▄    ▄▄▄   ▄▄▄  ▄▄▄   ▄▄▄   ▄▄▄    ▄▄▄▄▄▄▄      ▄▄▄ ${RESET}"
+    "${BRIGHT_RED}████▄  ███   ███  ███   ███ ▄███▀   ███▀▀▀▀▀      ███ ${RESET}"
+    "${BRIGHT_RED}███▀██▄███   ███  ███   ███████     ███▄▄         ███ ${RESET}"
+    "${BRIGHT_RED}███  ▀████   ███▄▄███   ███▀███▄    ███           ▀▀▀ ${RESET}"
+    "${BRIGHT_RED}███    ███   ▀██████▀   ███  ▀███   ▀███████      ███ ${RESET}"
+    ""
+    "${BRIGHT_RED}${BOLD}Server Stress & Resilience Toolkit ☢️${RESET}"
+    ""
+    "breaking point on purpose. Nuke generates heavy,"
+    "controlled load, saturates connections and hammers"
+    "endpoints to expose bottlenecks, timeouts and failure"
+    "modes before real traffic does."
+    ""
+    "${BOLD}🚩 Detonate only on hosts you own or are cleared to test. ${RESET}"
+    ""
+)
+
+# ---------------------------------------------------------------------------
 # Menu generators. Each prints its lines on stdout, one per line.
 # The sub-action labels below are placeholders — rename them per module.
 # ---------------------------------------------------------------------------
 generate_main_menu() {
     local -a menu_lines=(
-        ""
-        "${BRIGHT_RED}▄▄▄    ▄▄▄   ▄▄▄  ▄▄▄   ▄▄▄   ▄▄▄    ▄▄▄▄▄▄▄      ▄▄▄ ${RESET}"
-        "${BRIGHT_RED}████▄  ███   ███  ███   ███ ▄███▀   ███▀▀▀▀▀      ███ ${RESET}"
-        "${BRIGHT_RED}███▀██▄███   ███  ███   ███████     ███▄▄         ███ ${RESET}"
-        "${BRIGHT_RED}███  ▀████   ███▄▄███   ███▀███▄    ███           ▀▀▀ ${RESET}"
-        "${BRIGHT_RED}███    ███   ▀██████▀   ███  ▀███   ▀███████      ███ ${RESET}"
-        ""
-        "${BRIGHT_RED}${BOLD}Server Stress & Resilience Toolkit ☢️${RESET}"
-        ""
-        "breaking point on purpose. Nuke generates heavy,"
-        "controlled load, saturates connections and hammers"
-        "endpoints to expose bottlenecks, timeouts and failure"
-        "modes before real traffic does."
-        ""
-        "${BOLD}🚩 Detonate only on hosts you own or are cleared to test. ${RESET}"
-        ""
+        "${NUKE_BRAND_HEADER[@]}"
         ""
         "${BRIGHT_RED}[1]${RESET}  Configuration"
         ""
@@ -109,6 +117,7 @@ generate_main_menu() {
 
 generate_config_menu() {
     local -a menu_lines=(
+        "${NUKE_BRAND_HEADER[@]}"
         "${BRIGHT_RED}${BOLD}CONFIGURATION${RESET}"
         ""
         "Target : ${BRIGHT_RED}${NUKE_TARGET:-Not set}${RESET}"
@@ -124,6 +133,7 @@ generate_config_menu() {
 
 generate_passive_menu() {
     local -a menu_lines=(
+        "${NUKE_BRAND_HEADER[@]}"
         "${BRIGHT_RED}${BOLD}PASSIVE MODULE${RESET}"
         ""
         "Placeholder actions — wire your own tools here."
@@ -140,6 +150,7 @@ generate_passive_menu() {
 
 generate_active_menu() {
     local -a menu_lines=(
+        "${NUKE_BRAND_HEADER[@]}"
         "${BRIGHT_RED}${BOLD}ACTIVE MODULE${RESET}"
         ""
         "Placeholder actions — wire your own tools here."
@@ -156,6 +167,7 @@ generate_active_menu() {
 
 generate_special_menu() {
     local -a menu_lines=(
+        "${NUKE_BRAND_HEADER[@]}"
         "${BRIGHT_RED}${BOLD}SPECIAL MODULE${RESET}"
         ""
         "Placeholder actions — wire your own tools here."
