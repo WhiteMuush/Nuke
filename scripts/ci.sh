@@ -52,11 +52,14 @@ done < <(find . -name '*.sh' -not -path './.git/*' -print0)
 step "smoke (source chain + functions)"
 if bash -c '
     set -uo pipefail
-    for lib in core installer runner safety intensity toolbox ui; do
+    for lib in core installer runner safety intensity toolbox ui verdict session; do
         source "./lib/${lib}.sh"
     done
     source ./lib/modules/config.sh
     source ./lib/modules/kubernetes.sh
+    source ./lib/modules/docker.sh
+    source ./lib/modules/network.sh
+    source ./lib/modules/host.sh
 
     expected=(
         log_step log_info log_warn log_error log_success
@@ -72,14 +75,24 @@ if bash -c '
         nuke_have nuke_pkg_manager nuke_os_arch nuke_download
         nuke_install_binary nuke_detect_env
         render_banner_with_lines display_banner_with_menu display_title_middle_screen
-        prompt_menu_choice nuke_subview nuke_prompt _menu_row2
+        prompt_menu_choice nuke_subview nuke_prompt _menu_row2 _menu_key
+        nuke_fault_stub nuke_menu_screen
         generate_main_menu generate_config_menu generate_kubernetes_menu
+        generate_docker_menu generate_network_menu generate_host_menu
+        nuke_sessions_root nuke_session_dir nuke_session_sanitize
+        nuke_session_names nuke_session_save nuke_session_load
+        nuke_session_use nuke_session_init nuke_session_summary_lines
         ensure_output_dir config_set_output_dir config_detect_environment
-        handle_config_menu
+        config_switch_session config_rename_session handle_config_menu
+        nuke_pct nuke_verdict_compute nuke_resilience_run
         k8s_available k8s_set_scope k8s_status k8s_pod_kill
+        k8s_steady_probe k8s_resilience_check
         k8s_setup_chaos_mesh k8s_cm_net_delay k8s_cm_net_loss k8s_cm_stress_cpu
         k8s_cm_pod_failure k8s_cm_dns k8s_cm_time k8s_node_drain
         k8s_nuke_all k8s_recover handle_kubernetes_menu
+        docker_available docker_set_scope docker_status handle_docker_menu
+        net_set_scope net_status handle_network_menu
+        host_set_scope host_status handle_host_menu
     )
 
     missing=0
@@ -93,6 +106,19 @@ if bash -c '
         echo "smoke FAILED: ${missing} function(s) missing"
         exit 1
     fi
+
+    # Verdict math (pure functions, no cluster needed).
+    check() { [[ "$2" == "$3" ]] || { echo "ASSERT FAIL: $1 -> got '\''$2'\'' want '\''$3'\''"; exit 1; }; }
+    check "pct 95/100"  "$(nuke_pct 95 100)" "95"
+    check "pct 0/0"     "$(nuke_pct 0 0)"    "0"
+    check "pct 1/3"     "$(nuke_pct 1 3)"    "33"
+    check "verdict pass"      "$(nuke_verdict_compute 96 95 1)" "RESILIENT"
+    check "verdict low"       "$(nuke_verdict_compute 90 95 1)" "WEAK"
+    check "verdict norecover" "$(nuke_verdict_compute 99 95 0)" "WEAK"
+    nuke_verdict_compute 96 95 1 >/dev/null || { echo "ASSERT FAIL: RESILIENT rc"; exit 1; }
+    nuke_verdict_compute 90 95 1 >/dev/null && { echo "ASSERT FAIL: WEAK rc"; exit 1; }
+    echo "verdict assertions OK"
+
     echo "smoke OK — ${#expected[@]} functions present"
 '; then
     :
