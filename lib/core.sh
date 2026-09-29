@@ -10,7 +10,7 @@ NUKE_CORE_LOADED=1
 # ---------------------------------------------------------------------------
 # Color palette — TTY-aware. Pipes get plain text, terminals get colors.
 # ---------------------------------------------------------------------------
-if [[ -t 1 ]] && command -v tput >/dev/null 2>&1 \
+if [[ -t 1 ]] && [[ -z "${NO_COLOR:-}" ]] && command -v tput >/dev/null 2>&1 \
         && [[ -n "${TERM:-}" ]] && [[ "${TERM}" != "dumb" ]]; then
     RESET="$(tput sgr0)"
     BOLD="$(tput bold)"
