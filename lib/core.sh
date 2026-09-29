@@ -48,7 +48,15 @@ readonly BRIGHT_RED BRIGHT_GREEN BRIGHT_MAGENTA
 # Per-experiment scope (namespace / container / host filter) lives in
 # NUKE_SCOPE, defined by the safety layer and set inside each target layer.
 # ---------------------------------------------------------------------------
-NUKE_OUTPUT_DIR="nuke_out_$(date +%Y%m%d_%H%M%S)"
+NUKE_OUTPUT_DIR="${NUKE_OUTPUT_DIR:-nuke_out_$(date +%Y%m%d_%H%M%S)}"
+
+# Nuke's per-user home. Sessions, downloaded binaries and other state live
+# under here so nothing leaks into the repo or the system dirs.
+NUKE_HOME="${NUKE_HOME:-${HOME}/.nuke}"
+
+# Name of the active session. Set by the session layer at boot; empty until
+# then. A session is a named workspace whose config persists across runs.
+NUKE_SESSION_NAME="${NUKE_SESSION_NAME:-}"
 
 # Where third-party tools may be cloned by install.sh.
 NUKE_TOOLS_DIR="${NUKE_TOOLS_DIR:-/opt}"
