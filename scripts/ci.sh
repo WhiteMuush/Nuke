@@ -52,7 +52,7 @@ done < <(find . -name '*.sh' -not -path './.git/*' -print0)
 step "smoke (source chain + functions)"
 if bash -c '
     set -uo pipefail
-    for lib in core installer runner safety intensity toolbox ui verdict session; do
+    for lib in core installer runner safety intensity toolbox ui verdict experiment session; do
         source "./lib/${lib}.sh"
     done
     source ./lib/modules/config.sh
@@ -85,6 +85,8 @@ if bash -c '
         ensure_output_dir config_set_output_dir config_detect_environment
         config_switch_session config_rename_session handle_config_menu
         nuke_pct nuke_verdict_compute nuke_resilience_run
+        nuke_experiment_dir nuke_experiment_path nuke_experiment_save
+        nuke_experiment_load nuke_experiment_run
         k8s_available k8s_set_scope k8s_status k8s_pod_kill
         k8s_steady_probe k8s_resilience_check
         k8s_setup_chaos_mesh k8s_cm_net_delay k8s_cm_net_loss k8s_cm_stress_cpu
@@ -118,6 +120,22 @@ if bash -c '
     nuke_verdict_compute 96 95 1 >/dev/null || { echo "ASSERT FAIL: RESILIENT rc"; exit 1; }
     nuke_verdict_compute 90 95 1 >/dev/null && { echo "ASSERT FAIL: WEAK rc"; exit 1; }
     echo "verdict assertions OK"
+
+    # Experiment save/load round-trip (generated file, whitelist read).
+    tmpexp="$(mktemp -d)"
+    NUKE_EXPERIMENTS_DIR="$tmpexp"
+    NUKE_K8S_NAMESPACE=payments; NUKE_K8S_LABEL=app=web; NUKE_STEADY_MIN_SUCCESS=90
+    nuke_experiment_save demo kubernetes pod-kill HAVOC >/dev/null
+    NUKE_K8S_NAMESPACE=; NUKE_K8S_LABEL=; NUKE_STEADY_MIN_SUCCESS=
+    nuke_experiment_load demo
+    check "exp layer"     "$NUKE_EXP_LAYER"         "kubernetes"
+    check "exp fault"     "$NUKE_EXP_FAULT"         "pod-kill"
+    check "exp intensity" "$NUKE_EXP_INTENSITY"     "HAVOC"
+    check "exp namespace" "$NUKE_K8S_NAMESPACE"     "payments"
+    check "exp min"       "$NUKE_STEADY_MIN_SUCCESS" "90"
+    check "exp path"      "$(nuke_experiment_path foo)" "$tmpexp/foo.exp"
+    rm -rf "$tmpexp"; unset NUKE_EXPERIMENTS_DIR
+    echo "experiment assertions OK"
 
     echo "smoke OK — ${#expected[@]} functions present"
 '; then
