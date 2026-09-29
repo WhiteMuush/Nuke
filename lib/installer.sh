@@ -10,11 +10,14 @@ NUKE_INSTALLER_LOADED=1
 # ---------------------------------------------------------------------------
 # Logging — color-coded, with a consistent prefix.
 # ---------------------------------------------------------------------------
-log_step()    { printf '%b[*]%b %s\n' "${BLUE}"   "${RESET}" "$*"; }
-log_info()    { printf '%b[i]%b %s\n' "${CYAN}"   "${RESET}" "$*"; }
-log_warn()    { printf '%b[!]%b %s\n' "${YELLOW}" "${RESET}" "$*" >&2; }
-log_error()   { printf '%b[-]%b %s\n' "${RED}"    "${RESET}" "$*" >&2; }
-log_success() { printf '%b[+]%b %s\n' "${GREEN}"  "${RESET}" "$*"; }
+# Ansible-style issue lines: a colored, fixed-width label, then the message,
+# so everything aligns and matches the PLAY RECAP palette (see lib/recap.sh).
+# WARN/ERROR go to stderr so a captured stdout stays clean.
+log_step()    { printf '%b%-12s%b %s\n' "${BLUE}"   "task:"    "${RESET}" "$*"; }
+log_info()    { printf '%b%-12s%b %s\n' "${DIM}"    "info:"    "${RESET}" "$*"; }
+log_warn()    { printf '%b%-12s%b %s\n' "${YELLOW}" "warning:" "${RESET}" "$*" >&2; }
+log_error()   { printf '%b%-12s%b %s\n' "${RED}"    "fatal:"   "${RESET}" "$*" >&2; }
+log_success() { printf '%b%-12s%b %s\n' "${GREEN}"  "ok:"      "${RESET}" "$*"; }
 
 # ---------------------------------------------------------------------------
 # Prompting helpers — keep behavior consistent across modules.
