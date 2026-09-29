@@ -5,6 +5,11 @@
 # what lifts Nuke from "it breaks things" to "it tells you if you survived".
 # The engine is layer-agnostic: callers pass a probe function and a fault
 # function, so k8s, docker, network and host can all reuse it.
+#
+# The verdict is driven by the longest continuous outage, measured on the clock,
+# not by a share of samples. A count of samples is flaky when an outage is short
+# (it lands on two probes one run, three the next); "the service was down for Ns"
+# is stable and it is the number a team actually cares about.
 
 if [[ -n "${NUKE_VERDICT_LOADED:-}" ]]; then
     return 0
@@ -13,11 +18,11 @@ NUKE_VERDICT_LOADED=1
 
 # Tunables. Defaulted so a resilience check needs zero configuration; a caller
 # or a saved experiment may override them.
-NUKE_PROBE_INTERVAL="${NUKE_PROBE_INTERVAL:-2}"    # seconds between probes
-NUKE_STEADY_MIN_SUCCESS="${NUKE_STEADY_MIN_SUCCESS:-95}"  # pass bar, percent
-NUKE_RECOVER_WITHIN="${NUKE_RECOVER_WITHIN:-30}"   # seconds to heal after fault
+NUKE_PROBE_INTERVAL="${NUKE_PROBE_INTERVAL:-2}"   # seconds between probes
+NUKE_MAX_DOWNTIME="${NUKE_MAX_DOWNTIME:-5}"       # allowed continuous outage, s
+NUKE_RECOVER_WITHIN="${NUKE_RECOVER_WITHIN:-30}"  # seconds to heal after fault
 
-# Integer percentage of success over total, guarding total == 0.
+# Integer percentage of success over total, guarding total == 0. Informational.
 nuke_pct() {
     local success="$1" total="$2"
     (( total <= 0 )) && { printf '0'; return 0; }
@@ -25,11 +30,11 @@ nuke_pct() {
 }
 
 # Decide the verdict from the measured numbers. Pure: no I/O, unit-testable.
-# RESILIENT only if the steady state held above the bar AND the system recovered.
-# Echoes RESILIENT or WEAK; returns 0 for RESILIENT, 1 otherwise.
+# RESILIENT only if the system recovered AND its longest outage stayed within
+# the budget. Echoes RESILIENT or WEAK; returns 0 for RESILIENT, 1 otherwise.
 nuke_verdict_compute() {
-    local pct="$1" min="$2" recovered="$3"
-    if (( pct >= min )) && (( recovered == 1 )); then
+    local max_down="$1" budget="$2" recovered="$3"
+    if (( recovered == 1 )) && (( max_down <= budget )); then
         printf 'RESILIENT'
         return 0
     fi
@@ -39,8 +44,8 @@ nuke_verdict_compute() {
 
 # Write a short, shareable report of the run under the session's output dir.
 _nuke_verdict_report() {
-    local label="$1" verdict="$2" pct="$3" min="$4" \
-          recovered="$5" recover_time="$6" success="$7" total="$8"
+    local label="$1" verdict="$2" max_down="$3" budget="$4" \
+          recovered="$5" recover_time="$6" pct="$7" success="$8" total="$9"
     local dir="${NUKE_OUTPUT_DIR}/resilience"
     mkdir -p "${dir}"
     local file
@@ -52,13 +57,13 @@ _nuke_verdict_report() {
         printf 'scope       : %s\n' "${NUKE_SCOPE:-none}"
         printf 'fault       : %s\n' "${label}"
         printf 'verdict     : %s\n' "${verdict}"
-        printf 'steady state: %s%% healthy (bar %s%%)\n' "${pct}" "${min}"
+        printf 'max outage  : %ss (budget %ss)\n' "${max_down}" "${budget}"
         if (( recovered )); then
-            printf 'recovery    : %ss\n' "${recover_time}"
+            printf 'recovery    : back to healthy %ss after the fault\n' "${recover_time}"
         else
             printf 'recovery    : did not recover within the window\n'
         fi
-        printf 'samples     : %s healthy / %s total\n' "${success}" "${total}"
+        printf 'availability: %s%% of probes healthy (%s/%s)\n' "${pct}" "${success}" "${total}"
     } > "${file}"
     log_info "Report: ${file}"
 }
@@ -70,7 +75,7 @@ _nuke_verdict_report() {
 nuke_resilience_run() {
     local probe_fn="$1" fault_fn="$2" level="$3" expected_dur="${4:-0}" label="${5:-fault}"
     local interval="${NUKE_PROBE_INTERVAL}"
-    local min="${NUKE_STEADY_MIN_SUCCESS}"
+    local budget="${NUKE_MAX_DOWNTIME}"
     local recover_within="${NUKE_RECOVER_WITHIN}"
 
     # 1. Baseline: refuse to judge a system that is already unhealthy.
@@ -87,7 +92,7 @@ nuke_resilience_run() {
 
     local window=$(( expected_dur + recover_within ))
     log_info "Steady state : ${probe_fn}"
-    log_info "Probing every ${interval}s; pass bar ${min}%; window ${window}s"
+    log_info "Probing every ${interval}s; outage budget ${budget}s; window ${window}s"
 
     # 2. Inject the fault, then start the clock.
     log_step "Injecting: ${label} @ $(nuke_level_label "${level}")"
@@ -96,48 +101,66 @@ nuke_resilience_run() {
     fault_at="$(date +%s)"
     start_ts="${fault_at}"
 
-    # 3. Observe: sample the steady state until the window closes.
-    local total=0 success=0 streak=0 recovered=0 recover_time=0
+    # 3. Observe: sample the steady state until the window closes. Track the
+    #    longest continuous outage on the clock (down_since -> first healthy).
+    local total=0 success=0
+    local down_since=0 max_down=0 recovered=0 recover_time=0
     while : ; do
         now="$(date +%s)"
         elapsed=$(( now - start_ts ))
         (( elapsed >= window )) && break
         if "${probe_fn}"; then
             success=$(( success + 1 ))
-            streak=$(( streak + 1 ))
-            # Two clean samples in a row counts as recovered.
-            if (( ! recovered )) && (( streak >= 2 )); then
+            if (( down_since != 0 )); then
+                local d=$(( now - down_since ))
+                (( d > max_down )) && max_down=$d
+                down_since=0
+            fi
+            if (( ! recovered )); then
                 recovered=1
                 recover_time=$(( now - fault_at ))
             fi
         else
-            streak=0
+            (( down_since == 0 )) && down_since="${now}"
         fi
         total=$(( total + 1 ))
         sleep "${interval}"
     done
 
+    # Still down when the window closed: count that outage and mark not-recovered.
+    if (( down_since != 0 )); then
+        now="$(date +%s)"
+        local d=$(( now - down_since ))
+        (( d > max_down )) && max_down=$d
+        recovered=0
+    fi
+
     # 4. Verdict.
     local pct verdict rc
     pct="$(nuke_pct "${success}" "${total}")"
-    verdict="$(nuke_verdict_compute "${pct}" "${min}" "${recovered}")"
+    verdict="$(nuke_verdict_compute "${max_down}" "${budget}" "${recovered}")"
     rc=$?
 
     printf '\n'
     if (( rc == 0 )); then
-        printf '   %b%b✔ RESILIENT%b  ' "${BOLD}" "${BRIGHT_GREEN}" "${RESET}"
+        printf '   %b%b✔ RESILIENT%b\n' "${BOLD}" "${BRIGHT_GREEN}" "${RESET}"
     else
-        printf '   %b%b✘ WEAK SPOT%b  ' "${BOLD}" "${BRIGHT_RED}" "${RESET}"
+        printf '   %b%b✘ WEAK SPOT%b\n' "${BOLD}" "${BRIGHT_RED}" "${RESET}"
     fi
-    printf '%s%% healthy (bar %s%%)\n' "${pct}" "${min}"
+    if (( max_down == 0 )); then
+        printf '   no full outage (budget %ss)\n' "${budget}"
+    else
+        printf '   worst outage %ss (budget %ss)\n' "${max_down}" "${budget}"
+    fi
     if (( recovered )); then
-        printf '   recovered in %ss\n' "${recover_time}"
+        printf '   recovered %ss after the fault\n' "${recover_time}"
     else
         printf '   %bdid not recover within %ss%b\n' "${YELLOW}" "${window}" "${RESET}"
     fi
-    printf '   %bsamples: %s healthy / %s total%b\n' "${DIM}" "${success}" "${total}" "${RESET}"
+    printf '   %bavailability: %s%% of probes healthy (%s/%s)%b\n' \
+        "${DIM}" "${pct}" "${success}" "${total}" "${RESET}"
 
-    _nuke_verdict_report "${label}" "${verdict}" "${pct}" "${min}" \
-        "${recovered}" "${recover_time}" "${success}" "${total}"
+    _nuke_verdict_report "${label}" "${verdict}" "${max_down}" "${budget}" \
+        "${recovered}" "${recover_time}" "${pct}" "${success}" "${total}"
     return "${rc}"
 }

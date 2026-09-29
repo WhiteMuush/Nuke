@@ -114,25 +114,27 @@ if bash -c '
     check "pct 95/100"  "$(nuke_pct 95 100)" "95"
     check "pct 0/0"     "$(nuke_pct 0 0)"    "0"
     check "pct 1/3"     "$(nuke_pct 1 3)"    "33"
-    check "verdict pass"      "$(nuke_verdict_compute 96 95 1)" "RESILIENT"
-    check "verdict low"       "$(nuke_verdict_compute 90 95 1)" "WEAK"
-    check "verdict norecover" "$(nuke_verdict_compute 99 95 0)" "WEAK"
-    nuke_verdict_compute 96 95 1 >/dev/null || { echo "ASSERT FAIL: RESILIENT rc"; exit 1; }
-    nuke_verdict_compute 90 95 1 >/dev/null && { echo "ASSERT FAIL: WEAK rc"; exit 1; }
+    # verdict: RESILIENT iff recovered AND worst outage within budget.
+    check "verdict no-outage"  "$(nuke_verdict_compute 0 5 1)" "RESILIENT"
+    check "verdict at-budget"  "$(nuke_verdict_compute 5 5 1)" "RESILIENT"
+    check "verdict over"       "$(nuke_verdict_compute 6 5 1)" "WEAK"
+    check "verdict norecover"  "$(nuke_verdict_compute 0 5 0)" "WEAK"
+    nuke_verdict_compute 0 5 1 >/dev/null || { echo "ASSERT FAIL: RESILIENT rc"; exit 1; }
+    nuke_verdict_compute 6 5 1 >/dev/null && { echo "ASSERT FAIL: WEAK rc"; exit 1; }
     echo "verdict assertions OK"
 
     # Experiment save/load round-trip (generated file, whitelist read).
     tmpexp="$(mktemp -d)"
     NUKE_EXPERIMENTS_DIR="$tmpexp"
-    NUKE_K8S_NAMESPACE=payments; NUKE_K8S_LABEL=app=web; NUKE_STEADY_MIN_SUCCESS=90
+    NUKE_K8S_NAMESPACE=payments; NUKE_K8S_LABEL=app=web; NUKE_MAX_DOWNTIME=8
     nuke_experiment_save demo kubernetes pod-kill HAVOC >/dev/null
-    NUKE_K8S_NAMESPACE=; NUKE_K8S_LABEL=; NUKE_STEADY_MIN_SUCCESS=
+    NUKE_K8S_NAMESPACE=; NUKE_K8S_LABEL=; NUKE_MAX_DOWNTIME=
     nuke_experiment_load demo
-    check "exp layer"     "$NUKE_EXP_LAYER"         "kubernetes"
-    check "exp fault"     "$NUKE_EXP_FAULT"         "pod-kill"
-    check "exp intensity" "$NUKE_EXP_INTENSITY"     "HAVOC"
-    check "exp namespace" "$NUKE_K8S_NAMESPACE"     "payments"
-    check "exp min"       "$NUKE_STEADY_MIN_SUCCESS" "90"
+    check "exp layer"     "$NUKE_EXP_LAYER"     "kubernetes"
+    check "exp fault"     "$NUKE_EXP_FAULT"     "pod-kill"
+    check "exp intensity" "$NUKE_EXP_INTENSITY" "HAVOC"
+    check "exp namespace" "$NUKE_K8S_NAMESPACE" "payments"
+    check "exp downtime"  "$NUKE_MAX_DOWNTIME"  "8"
     check "exp path"      "$(nuke_experiment_path foo)" "$tmpexp/foo.exp"
     rm -rf "$tmpexp"; unset NUKE_EXPERIMENTS_DIR
     echo "experiment assertions OK"

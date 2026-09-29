@@ -48,11 +48,11 @@ nuke_experiment_save() {
         printf 'LAYER=%s\n'              "${layer}"
         printf 'K8S_NAMESPACE=%s\n'      "${NUKE_K8S_NAMESPACE:-}"
         printf 'K8S_LABEL=%s\n'          "${NUKE_K8S_LABEL:-}"
-        printf 'FAULT=%s\n'              "${fault}"
-        printf 'INTENSITY=%s\n'          "${intensity}"
-        printf 'STEADY_MIN_SUCCESS=%s\n' "${NUKE_STEADY_MIN_SUCCESS:-95}"
-        printf 'RECOVER_WITHIN=%s\n'     "${NUKE_RECOVER_WITHIN:-30}"
-        printf 'PROBE_INTERVAL=%s\n'     "${NUKE_PROBE_INTERVAL:-2}"
+        printf 'FAULT=%s\n'          "${fault}"
+        printf 'INTENSITY=%s\n'      "${intensity}"
+        printf 'MAX_DOWNTIME=%s\n'   "${NUKE_MAX_DOWNTIME:-5}"
+        printf 'RECOVER_WITHIN=%s\n' "${NUKE_RECOVER_WITHIN:-30}"
+        printf 'PROBE_INTERVAL=%s\n' "${NUKE_PROBE_INTERVAL:-2}"
     } > "${path}"
     log_success "Saved experiment: ${path}"
     log_info "Replay in CI: ./nuke.sh run ${name}"
@@ -73,11 +73,11 @@ nuke_experiment_load() {
             LAYER)              NUKE_EXP_LAYER="${val}"          ;;
             FAULT)              NUKE_EXP_FAULT="${val}"          ;;
             INTENSITY)          NUKE_EXP_INTENSITY="${val}"      ;;
-            K8S_NAMESPACE)      NUKE_K8S_NAMESPACE="${val}"      ;;
-            K8S_LABEL)          NUKE_K8S_LABEL="${val}"          ;;
-            STEADY_MIN_SUCCESS) NUKE_STEADY_MIN_SUCCESS="${val}" ;;
-            RECOVER_WITHIN)     NUKE_RECOVER_WITHIN="${val}"     ;;
-            PROBE_INTERVAL)     NUKE_PROBE_INTERVAL="${val}"     ;;
+            K8S_NAMESPACE)  NUKE_K8S_NAMESPACE="${val}"  ;;
+            K8S_LABEL)      NUKE_K8S_LABEL="${val}"      ;;
+            MAX_DOWNTIME)   NUKE_MAX_DOWNTIME="${val}"   ;;
+            RECOVER_WITHIN) NUKE_RECOVER_WITHIN="${val}" ;;
+            PROBE_INTERVAL) NUKE_PROBE_INTERVAL="${val}" ;;
             *) : ;;
         esac
     done < "${path}"

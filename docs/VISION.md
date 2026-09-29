@@ -71,7 +71,7 @@ hits?* It has four parts, and Nuke fills in as much as it can:
 - **Steady state** — what must stay true. Auto-derived from the target by
   default (e.g. replicas stay ready), overridable with a custom probe.
 - **Fault** — what to inject, at an intensity on the `POKE → NUKE` ladder.
-- **Verdict rule** — a success threshold and a recovery window, both defaulted.
+- **Verdict rule** — an outage budget and a recovery window, both defaulted.
 
 ### The run
 
@@ -79,8 +79,10 @@ hits?* It has four parts, and Nuke fills in as much as it can:
 2. Start probing the steady state on an interval, recording pass/fail.
 3. Inject the fault at the chosen intensity, for its capped duration.
 4. Keep probing through and after the fault, up to the recovery window.
-5. Emit a **verdict**: `RESILIENT` if the steady state held above the threshold
-   and recovered in time, otherwise `WEAK SPOT`, with the numbers.
+5. Emit a **verdict**: `RESILIENT` if the system recovered and its worst
+   continuous outage stayed within the budget, otherwise `WEAK SPOT`, with the
+   numbers. The outage is measured on the clock, not by counting samples, so the
+   verdict is stable run to run.
 6. Exit `0` or `1` so CI can gate on it.
 
 ### The saved file (generated, not hand-written)
@@ -95,7 +97,7 @@ TARGET=deploy/checkout -n payments
 FAULT=pod-kill
 INTENSITY=HAVOC
 # steady state and thresholds are auto-filled; override only if you want:
-# STEADY_MIN_SUCCESS=95
+# MAX_DOWNTIME=5
 # RECOVER_WITHIN=30
 ```
 
