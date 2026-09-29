@@ -108,7 +108,7 @@ k8s_pod_kill() {
     total=${#pods[@]}
     want=$(( blast < total ? blast : total ))
 
-    if nuke_level_requires_confirm "${level}"; then
+    if nuke_level_requires_confirm "${level}" && [[ -z "${NUKE_SKIP_CONFIRM:-}" ]]; then
         nuke_confirm_detonation "kill ALL ${total} pod(s) in ${NUKE_SCOPE}" || return 1
     fi
 
@@ -169,6 +169,13 @@ k8s_resilience_check() {
     level="$(nuke_pick_level "Intensity for the resilience check")" || return 0
     nuke_subview "RESILIENCE CHECK @ $(nuke_level_label "${level}")"
     nuke_resilience_run k8s_steady_probe k8s_pod_kill "${level}" 0 "k8s pod-kill"
+
+    printf '\n'
+    if prompt_yesno "Save this as a reusable experiment (replayable in CI)"; then
+        local expname
+        expname="$(nuke_session_sanitize "$(prompt_value "Experiment name" "k8s-pod-kill")")"
+        [[ -n "${expname}" ]] && nuke_experiment_save "${expname}" kubernetes pod-kill "${level}"
+    fi
     press_enter_to_continue
 }
 
