@@ -33,6 +33,7 @@ nuke_panic() {
     printf '\n'
     log_warn "Interrupted. Rolling back active chaos and exiting..."
     nuke_rollback_run
+    declare -F nuke_session_save >/dev/null && nuke_session_save
     exit 130
 }
 

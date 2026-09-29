@@ -108,7 +108,7 @@ k8s_pod_kill() {
     total=${#pods[@]}
     want=$(( blast < total ? blast : total ))
 
-    if nuke_level_requires_confirm "${level}"; then
+    if nuke_level_requires_confirm "${level}" && [[ -z "${NUKE_SKIP_CONFIRM:-}" ]]; then
         nuke_confirm_detonation "kill ALL ${total} pod(s) in ${NUKE_SCOPE}" || return 1
     fi
 
@@ -131,6 +131,54 @@ k8s_pod_kill() {
     log_step "pod-kill [$(nuke_level_label "${level}")]: ${want}/${total} pod(s)"
     nuke_run "k8s pod-kill ${level}" -- kubectl "${kill_args[@]}"
     log_info "Deployments will reschedule killed pods automatically."
+}
+
+# Steady-state probe: healthy when every Deployment in scope keeps at least one
+# replica available, i.e. the service still serves. This measures availability,
+# not full capacity: losing some pods of a replicated service is survival, not
+# failure, so a resilient workload keeps passing until it is actually knocked
+# out. Zero-config, derived straight from the target. Returns 0 when healthy.
+k8s_steady_probe() {
+    local -a sel
+    mapfile -t sel < <(_k8s_selector_args)
+
+    local data
+    data="$(kubectl get deploy "${sel[@]}" \
+        -o jsonpath='{range .items[*]}{.spec.replicas} {.status.availableReplicas}{"\n"}{end}' \
+        2>/dev/null)" || return 1
+    # No deployments in scope: nothing to judge, treat as not-healthy so the
+    # baseline check aborts with a clear message rather than passing vacuously.
+    [[ -z "${data//[$'\n'[:space:]]/}" ]] && return 1
+
+    local desired available
+    while read -r desired available; do
+        [[ -z "${desired}" ]] && continue
+        available="${available:-0}"
+        (( desired > 0 ))    || return 1
+        (( available >= 1 )) || return 1
+    done <<< "${data}"
+    return 0
+}
+
+# Run a full resilience check: probe the steady state, kill pods, watch it heal,
+# and print a verdict. pod-kill is instantaneous, so the fault duration is 0 and
+# the whole window is the recovery budget.
+k8s_resilience_check() {
+    k8s_available     || { press_enter_to_continue; return 1; }
+    nuke_require_scope || { press_enter_to_continue; return 1; }
+
+    local level
+    level="$(nuke_pick_level "Intensity for the resilience check")" || return 0
+    nuke_subview "RESILIENCE CHECK @ $(nuke_level_label "${level}")"
+    nuke_resilience_run k8s_steady_probe k8s_pod_kill "${level}" 0 "k8s pod-kill"
+
+    printf '\n'
+    if prompt_yesno "Save this as a reusable experiment (replayable in CI)"; then
+        local expname
+        expname="$(nuke_session_sanitize "$(prompt_value "Experiment name" "k8s-pod-kill")")"
+        [[ -n "${expname}" ]] && nuke_experiment_save "${expname}" kubernetes pod-kill "${level}"
+    fi
+    press_enter_to_continue
 }
 
 # ===========================================================================
@@ -391,6 +439,7 @@ handle_kubernetes_menu() {
             1)  k8s_set_scope ;;
             2)  k8s_status ;;
             3)  k8s_setup_chaos_mesh ;;
+            14) k8s_resilience_check ;;
             4)  _k8s_run_fault k8s_pod_kill        "Pod-kill" ;;
             5)  _k8s_run_fault k8s_cm_pod_failure  "Pod-failure" ;;
             6)  _k8s_run_fault k8s_cm_net_delay    "Net delay" ;;

@@ -1,0 +1,8 @@
+# A small kind cluster to exercise Nuke against a real Kubernetes.
+# One control-plane and one worker so pod-kill reschedules and node-drain has
+# somewhere to evict from.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+  - role: worker

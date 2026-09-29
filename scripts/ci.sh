@@ -52,11 +52,14 @@ done < <(find . -name '*.sh' -not -path './.git/*' -print0)
 step "smoke (source chain + functions)"
 if bash -c '
     set -uo pipefail
-    for lib in core installer runner safety intensity toolbox ui; do
+    for lib in core installer runner safety intensity toolbox ui verdict recap experiment session; do
         source "./lib/${lib}.sh"
     done
     source ./lib/modules/config.sh
     source ./lib/modules/kubernetes.sh
+    source ./lib/modules/docker.sh
+    source ./lib/modules/network.sh
+    source ./lib/modules/host.sh
 
     expected=(
         log_step log_info log_warn log_error log_success
@@ -72,14 +75,28 @@ if bash -c '
         nuke_have nuke_pkg_manager nuke_os_arch nuke_download
         nuke_install_binary nuke_detect_env
         render_banner_with_lines display_banner_with_menu display_title_middle_screen
-        prompt_menu_choice nuke_subview nuke_prompt _menu_row2
+        prompt_menu_choice nuke_subview nuke_prompt _menu_row2 _menu_key
+        nuke_fault_stub nuke_menu_screen
         generate_main_menu generate_config_menu generate_kubernetes_menu
+        generate_docker_menu generate_network_menu generate_host_menu
+        nuke_sessions_root nuke_session_dir nuke_session_sanitize
+        nuke_session_names nuke_session_save nuke_session_load
+        nuke_session_use nuke_session_init nuke_session_summary_lines
         ensure_output_dir config_set_output_dir config_detect_environment
-        handle_config_menu
+        config_switch_session config_rename_session handle_config_menu
+        nuke_pct nuke_verdict_compute nuke_resilience_run
+        nuke_task nuke_issue nuke_recap_reset nuke_recap_add
+        nuke_recap_word nuke_recap_print
+        nuke_experiment_dir nuke_experiment_path nuke_experiment_save
+        nuke_experiment_load nuke_experiment_run
         k8s_available k8s_set_scope k8s_status k8s_pod_kill
+        k8s_steady_probe k8s_resilience_check
         k8s_setup_chaos_mesh k8s_cm_net_delay k8s_cm_net_loss k8s_cm_stress_cpu
         k8s_cm_pod_failure k8s_cm_dns k8s_cm_time k8s_node_drain
         k8s_nuke_all k8s_recover handle_kubernetes_menu
+        docker_available docker_set_scope docker_status handle_docker_menu
+        net_set_scope net_status handle_network_menu
+        host_set_scope host_status handle_host_menu
     )
 
     missing=0
@@ -93,6 +110,44 @@ if bash -c '
         echo "smoke FAILED: ${missing} function(s) missing"
         exit 1
     fi
+
+    # Verdict math (pure functions, no cluster needed).
+    check() { [[ "$2" == "$3" ]] || { echo "ASSERT FAIL: $1 -> got '\''$2'\'' want '\''$3'\''"; exit 1; }; }
+    check "pct 95/100"  "$(nuke_pct 95 100)" "95"
+    check "pct 0/0"     "$(nuke_pct 0 0)"    "0"
+    check "pct 1/3"     "$(nuke_pct 1 3)"    "33"
+    # verdict: RESILIENT iff recovered AND worst outage within budget.
+    check "verdict no-outage"  "$(nuke_verdict_compute 0 5 1)" "RESILIENT"
+    check "verdict at-budget"  "$(nuke_verdict_compute 5 5 1)" "RESILIENT"
+    check "verdict over"       "$(nuke_verdict_compute 6 5 1)" "WEAK"
+    check "verdict norecover"  "$(nuke_verdict_compute 0 5 0)" "WEAK"
+    nuke_verdict_compute 0 5 1 >/dev/null || { echo "ASSERT FAIL: RESILIENT rc"; exit 1; }
+    nuke_verdict_compute 6 5 1 >/dev/null && { echo "ASSERT FAIL: WEAK rc"; exit 1; }
+    check "recap word 0" "$(nuke_recap_word 0)" "resilient"
+    check "recap word 1" "$(nuke_recap_word 1)" "weak"
+    check "recap word 2" "$(nuke_recap_word 2)" "errored"
+    nuke_recap_reset; nuke_recap_add resilient; nuke_recap_add weak; nuke_recap_add weak
+    check "recap resilient" "$NUKE_RECAP_RESILIENT" "1"
+    check "recap weak"      "$NUKE_RECAP_WEAK"      "2"
+    check "recap errored"   "$NUKE_RECAP_ERRORED"   "0"
+    echo "verdict assertions OK"
+
+    # Experiment save/load round-trip (generated file, whitelist read).
+    tmpexp="$(mktemp -d)"
+    NUKE_EXPERIMENTS_DIR="$tmpexp"
+    NUKE_K8S_NAMESPACE=payments; NUKE_K8S_LABEL=app=web; NUKE_MAX_DOWNTIME=8
+    nuke_experiment_save demo kubernetes pod-kill HAVOC >/dev/null
+    NUKE_K8S_NAMESPACE=; NUKE_K8S_LABEL=; NUKE_MAX_DOWNTIME=
+    nuke_experiment_load demo
+    check "exp layer"     "$NUKE_EXP_LAYER"     "kubernetes"
+    check "exp fault"     "$NUKE_EXP_FAULT"     "pod-kill"
+    check "exp intensity" "$NUKE_EXP_INTENSITY" "HAVOC"
+    check "exp namespace" "$NUKE_K8S_NAMESPACE" "payments"
+    check "exp downtime"  "$NUKE_MAX_DOWNTIME"  "8"
+    check "exp path"      "$(nuke_experiment_path foo)" "$tmpexp/foo.exp"
+    rm -rf "$tmpexp"; unset NUKE_EXPERIMENTS_DIR
+    echo "experiment assertions OK"
+
     echo "smoke OK — ${#expected[@]} functions present"
 '; then
     :
