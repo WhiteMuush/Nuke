@@ -133,27 +133,29 @@ k8s_pod_kill() {
     log_info "Deployments will reschedule killed pods automatically."
 }
 
-# Steady-state probe: healthy when every Deployment in scope has all its desired
-# replicas ready. Zero-config, derived straight from the target: no health URL
-# to write, and it holds for any workload. Returns 0 when healthy, 1 otherwise.
+# Steady-state probe: healthy when every Deployment in scope keeps at least one
+# replica available, i.e. the service still serves. This measures availability,
+# not full capacity: losing some pods of a replicated service is survival, not
+# failure, so a resilient workload keeps passing until it is actually knocked
+# out. Zero-config, derived straight from the target. Returns 0 when healthy.
 k8s_steady_probe() {
     local -a sel
     mapfile -t sel < <(_k8s_selector_args)
 
     local data
     data="$(kubectl get deploy "${sel[@]}" \
-        -o jsonpath='{range .items[*]}{.spec.replicas} {.status.readyReplicas}{"\n"}{end}' \
+        -o jsonpath='{range .items[*]}{.spec.replicas} {.status.availableReplicas}{"\n"}{end}' \
         2>/dev/null)" || return 1
     # No deployments in scope: nothing to judge, treat as not-healthy so the
     # baseline check aborts with a clear message rather than passing vacuously.
     [[ -z "${data//[$'\n'[:space:]]/}" ]] && return 1
 
-    local desired ready
-    while read -r desired ready; do
+    local desired available
+    while read -r desired available; do
         [[ -z "${desired}" ]] && continue
-        ready="${ready:-0}"
-        (( desired > 0 ))     || return 1
-        (( ready >= desired )) || return 1
+        available="${available:-0}"
+        (( desired > 0 ))    || return 1
+        (( available >= 1 )) || return 1
     done <<< "${data}"
     return 0
 }
