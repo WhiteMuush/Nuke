@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# install.sh — Install the base dependencies required by Nuke.
-# Designed for Debian/Ubuntu/Kali. Run with sudo.
+# install.sh — Install the tools Nuke's layers rely on.
+# Targets Debian / Ubuntu / Kali. Run with sudo.
 #
-# This is a skeleton installer: it sets up a sane base and PATH, then leaves
-# per-tool installers for you to fill in. See install_example_tool below and
-# docs/ADDING_A_TOOL.md.
+# System tools come from apt; the Kubernetes and container-chaos tools are
+# pinned to their latest upstream release and dropped as static binaries into
+# /usr/local/bin, so this works the same across distros.
 
 set -euo pipefail
 
@@ -16,7 +16,31 @@ source "${SCRIPT_DIR}/lib/core.sh"
 # shellcheck source=lib/installer.sh
 source "${SCRIPT_DIR}/lib/installer.sh"
 
-require_root
+# Downloaded binaries go system-wide (this runs as root).
+export NUKE_BIN_DIR="${NUKE_BIN_DIR:-/usr/local/bin}"
+# shellcheck source=lib/toolbox.sh
+source "${SCRIPT_DIR}/lib/toolbox.sh"
+
+# Release architecture slug (amd64 / arm64 / ...), derived from the host.
+NUKE_ARCH="$(nuke_os_arch)"; NUKE_ARCH="${NUKE_ARCH#*/}"
+readonly NUKE_ARCH
+
+# ---------------------------------------------------------------------------
+# GitHub release resolvers. Echo empty on failure so callers can skip cleanly.
+# ---------------------------------------------------------------------------
+# Download URL of the first asset matching <pattern> in the latest release.
+_gh_latest_asset() {
+    local repo="$1" pattern="$2"
+    curl -fsSL "https://api.github.com/repos/${repo}/releases/latest" 2>/dev/null \
+        | grep -oE '"browser_download_url": *"[^"]+"' \
+        | cut -d'"' -f4 | grep -E "${pattern}" | head -1
+}
+
+# Tag name of the latest release (e.g. v3.16.2).
+_gh_latest_tag() {
+    curl -fsSL "https://api.github.com/repos/$1/releases/latest" 2>/dev/null \
+        | grep -oE '"tag_name": *"[^"]+"' | cut -d'"' -f4 | head -1
+}
 
 # ---------------------------------------------------------------------------
 # Disable known broken apt repositories that would abort `apt update`.
@@ -24,54 +48,77 @@ require_root
 disable_broken_repos() {
     log_step "Cleaning up broken apt repositories..."
     mkdir -p /etc/apt/sources.list.d/disabled
-
     if ls /etc/apt/sources.list.d/*winehq* >/dev/null 2>&1; then
         mv /etc/apt/sources.list.d/*winehq* /etc/apt/sources.list.d/disabled/ \
             2>/dev/null || true
     fi
-
     log_success "Repositories cleaned"
 }
 
 install_base_dependencies() {
     log_step "Installing base dependencies..."
-
     apt update -y 2>&1 | grep -v "NO_PUBKEY\|not signed" || true
-
     apt_install \
-        git \
-        curl \
-        wget \
-        python3 \
-        python3-pip \
-        python3-venv \
-        python3-full \
-        pipx \
+        git curl wget \
+        python3 python3-pip python3-venv python3-full pipx \
         build-essential 2>&1 | grep -v "WARNING" || true
-
     log_success "Base dependencies installed"
-
     export PATH="${PATH}:/root/.local/bin:${HOME}/.local/bin"
     pipx ensurepath 2>/dev/null || true
 }
 
-# ---------------------------------------------------------------------------
-# Example per-tool installer. Copy this shape for each real tool you add,
-# then call it from main(). Delete once you have your own.
-# ---------------------------------------------------------------------------
-install_example_tool() {
-    log_step "Installing example-tool..."
-    # apt path:
-    #   apt_install example-tool
-    # pipx path:
-    #   pipx_install example-tool
-    # git path:
-    #   local dest="${NUKE_TOOLS_DIR}/example-tool"
-    #   clone_or_pull "https://github.com/owner/example-tool.git" "$dest"
-    #   install_pip_requirements "$dest"
-    #   chmod +x "${dest}/main.py"
-    #   ln -sf "${dest}/main.py" /usr/local/bin/example-tool
-    log_info "example-tool is a placeholder. Replace this function."
+# System-level chaos tools available from apt: tc (iproute2), iptables,
+# stress-ng, and the Docker engine used by the container layer and kind.
+install_system_tools() {
+    log_step "Installing system tools (iproute2, iptables, stress-ng, docker)..."
+    apt_install iproute2 iptables stress-ng docker.io 2>&1 | grep -v "WARNING" || true
+    systemctl enable --now docker >/dev/null 2>&1 || true
+    if [[ -n "${SUDO_USER:-}" ]] && getent group docker >/dev/null 2>&1; then
+        usermod -aG docker "${SUDO_USER}" 2>/dev/null \
+            && log_info "Added ${SUDO_USER} to the docker group (re-login to apply)."
+    fi
+    log_success "System tools installed"
+}
+
+# kubectl: pinned to the current stable channel.
+install_kubectl() {
+    local ver
+    ver="$(curl -fsSL https://dl.k8s.io/release/stable.txt 2>/dev/null)" || true
+    [[ -n "${ver}" ]] || { log_warn "Could not resolve kubectl version, skipping."; return 0; }
+    nuke_install_binary "https://dl.k8s.io/release/${ver}/bin/linux/${NUKE_ARCH}/kubectl" kubectl
+}
+
+# kind: local Kubernetes in Docker, used by the test environment.
+install_kind() {
+    local url
+    url="$(_gh_latest_asset kubernetes-sigs/kind "kind-linux-${NUKE_ARCH}\$")"
+    [[ -n "${url}" ]] || { log_warn "Could not resolve kind release, skipping."; return 0; }
+    nuke_install_binary "${url}" kind
+}
+
+# helm: used to install Chaos Mesh for the network / stress faults.
+install_helm() {
+    local ver
+    ver="$(_gh_latest_tag helm/helm)"
+    [[ -n "${ver}" ]] || { log_warn "Could not resolve helm version, skipping."; return 0; }
+    nuke_install_binary "https://get.helm.sh/helm-${ver}-linux-${NUKE_ARCH}.tar.gz" helm \
+        --tar "linux-${NUKE_ARCH}/helm"
+}
+
+# pumba: container chaos (pause, kill, netem) for the Docker layer.
+install_pumba() {
+    local url
+    url="$(_gh_latest_asset alexei-led/pumba "pumba_linux_${NUKE_ARCH}\$")"
+    [[ -n "${url}" ]] || { log_warn "Could not resolve pumba release, skipping."; return 0; }
+    nuke_install_binary "${url}" pumba
+}
+
+# toxiproxy-cli: TCP fault injection for the network layer.
+install_toxiproxy() {
+    local url
+    url="$(_gh_latest_asset Shopify/toxiproxy "toxiproxy-cli-linux-${NUKE_ARCH}\$")"
+    [[ -n "${url}" ]] || { log_warn "Could not resolve toxiproxy release, skipping."; return 0; }
+    nuke_install_binary "${url}" toxiproxy-cli
 }
 
 configure_path() {
@@ -79,18 +126,15 @@ configure_path() {
     if ! grep -q ".local/bin" /root/.bashrc 2>/dev/null; then
         echo 'export PATH="$PATH:$HOME/.local/bin:/root/.local/bin"' >> /root/.bashrc
     fi
-
     if [[ -n "${SUDO_USER:-}" ]]; then
         local user_home
         user_home=$(getent passwd "$SUDO_USER" | cut -d: -f6)
-        if [[ -f "${user_home}/.bashrc" ]]; then
-            if ! grep -q ".local/bin" "${user_home}/.bashrc"; then
-                echo 'export PATH="$PATH:$HOME/.local/bin"' >> "${user_home}/.bashrc"
-                chown "${SUDO_USER}:${SUDO_USER}" "${user_home}/.bashrc"
-            fi
+        if [[ -f "${user_home}/.bashrc" ]] \
+                && ! grep -q ".local/bin" "${user_home}/.bashrc"; then
+            echo 'export PATH="$PATH:$HOME/.local/bin"' >> "${user_home}/.bashrc"
+            chown "${SUDO_USER}:${SUDO_USER}" "${user_home}/.bashrc"
         fi
     fi
-
     export PATH="${PATH}:${HOME}/.local/bin:/root/.local/bin"
 }
 
@@ -100,22 +144,28 @@ print_summary() {
     log_success "Installation complete."
     echo "========================================================================"
     echo ""
-    echo "Base ready. Add your per-tool installers in install.sh (see"
-    echo "install_example_tool) and register them in main()."
+    echo "Reload your shell (source ~/.bashrc) so the new binaries are on PATH."
+    echo "Docker group changes need a re-login to take effect."
     echo ""
-    echo "IMPORTANT:"
-    echo "  Reload your shell: source ~/.bashrc"
-    echo "  Or restart your terminal."
-    echo ""
-    echo "========================================================================"
 }
 
 main() {
+    require_root
     disable_broken_repos
     install_base_dependencies
-    # install_example_tool
+    install_system_tools
+    install_kubectl
+    install_kind
+    install_helm
+    install_pumba
+    install_toxiproxy
     configure_path
     print_summary
+    echo ""
+    nuke_detect_env || true
 }
 
-main "$@"
+# Allow sourcing (for tests) without running the installer.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

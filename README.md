@@ -37,8 +37,11 @@ Nuke targets Debian / Ubuntu / Kali and bundles a base installer:
 sudo ./install.sh
 ```
 
-The installer sets up git, Python, pipx and build tooling, then leaves
-per-tool installers for you to fill in (see `install_example_tool`).
+The installer sets up the base tooling (git, Python, pipx, build) and the
+chaos tools the layers rely on: kubectl, kind, helm, docker, stress-ng,
+iproute2 (tc), iptables, pumba and toxiproxy-cli. The Kubernetes and
+container-chaos binaries are pulled from their latest upstream release into
+`/usr/local/bin`; the rest come from apt.
 
 ### Running Nuke
 

@@ -87,7 +87,8 @@ esac
 
 ## Update `install.sh` if the tool needs installing
 
-Copy the `install_example_tool` shape. If the tool ships in apt:
+Copy the shape of an existing installer in `install.sh` (`install_kind`,
+`install_pumba`, ...). If the tool ships in apt:
 
 ```bash
 install_my_cool_tool() {
