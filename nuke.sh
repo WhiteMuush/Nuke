@@ -33,8 +33,24 @@ source "${SCRIPT_DIR}/lib/modules/kubernetes.sh"
 source "${SCRIPT_DIR}/lib/modules/docker.sh"
 # shellcheck source=lib/modules/network.sh
 source "${SCRIPT_DIR}/lib/modules/network.sh"
+# shellcheck source=lib/experiment.sh
+source "${SCRIPT_DIR}/lib/experiment.sh"
 # shellcheck source=lib/modules/host.sh
 source "${SCRIPT_DIR}/lib/modules/host.sh"
+
+# Headless entry for CI: `nuke.sh run <experiment>` replays a saved resilience
+# check with no menu and exits with its verdict code (0 resilient, 1 weak,
+# 2 could not run). Everything below the dispatch is the interactive path.
+nuke_headless_run() {
+    local ref="${1:-}"
+    if [[ -z "${ref}" ]]; then
+        log_error "usage: nuke.sh run <experiment>"
+        return 2
+    fi
+    nuke_arm_rollback
+    export NUKE_SKIP_CONFIRM=1   # never block a pipeline on a typed prompt
+    nuke_experiment_run "${ref}"
+}
 
 main_loop() {
     local choice
@@ -69,5 +85,11 @@ main_loop() {
         esac
     done
 }
+
+if [[ "${1:-}" == "run" ]]; then
+    shift
+    nuke_headless_run "$@"
+    exit $?
+fi
 
 main_loop "$@"
