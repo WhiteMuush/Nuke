@@ -93,21 +93,31 @@ nuke_experiment_run() {
         return 2
     fi
 
-    log_step "Experiment: ${NUKE_EXP_NAME:-$1}"
+    local name="${NUKE_EXP_NAME:-$1}"
+    nuke_task "resilience : ${name}"
     log_info "layer=${NUKE_EXP_LAYER} fault=${NUKE_EXP_FAULT} intensity=${NUKE_EXP_INTENSITY}"
 
+    local rc
     case "${NUKE_EXP_LAYER}:${NUKE_EXP_FAULT}" in
         kubernetes:pod-kill)
-            k8s_available || return 2
-            NUKE_SCOPE="k8s:${NUKE_K8S_NAMESPACE}"
-            [[ -n "${NUKE_K8S_LABEL}" ]] && NUKE_SCOPE="${NUKE_SCOPE} (${NUKE_K8S_LABEL})"
-            nuke_resilience_run k8s_steady_probe k8s_pod_kill "${NUKE_EXP_INTENSITY}" 0 "k8s pod-kill"
-            return $?
+            if ! k8s_available; then
+                nuke_issue unreachable "${name}: cluster not reachable"
+                rc=2
+            else
+                NUKE_SCOPE="k8s:${NUKE_K8S_NAMESPACE}"
+                [[ -n "${NUKE_K8S_LABEL}" ]] && NUKE_SCOPE="${NUKE_SCOPE} (${NUKE_K8S_LABEL})"
+                nuke_resilience_run k8s_steady_probe k8s_pod_kill "${NUKE_EXP_INTENSITY}" 0 "k8s pod-kill"
+                rc=$?
+            fi
             ;;
         *)
-            log_error "Not runnable headless yet: ${NUKE_EXP_LAYER}/${NUKE_EXP_FAULT}"
-            log_info "v1 supports kubernetes/pod-kill; more faults land next."
-            return 2
+            nuke_issue fatal "${name}: ${NUKE_EXP_LAYER}/${NUKE_EXP_FAULT} not runnable headless yet (v1 does kubernetes/pod-kill)"
+            rc=2
             ;;
     esac
+
+    nuke_recap_reset
+    nuke_recap_add "$(nuke_recap_word "${rc}")"
+    nuke_recap_print "${name}"
+    return "${rc}"
 }

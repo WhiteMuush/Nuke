@@ -52,7 +52,7 @@ done < <(find . -name '*.sh' -not -path './.git/*' -print0)
 step "smoke (source chain + functions)"
 if bash -c '
     set -uo pipefail
-    for lib in core installer runner safety intensity toolbox ui verdict experiment session; do
+    for lib in core installer runner safety intensity toolbox ui verdict recap experiment session; do
         source "./lib/${lib}.sh"
     done
     source ./lib/modules/config.sh
@@ -85,6 +85,8 @@ if bash -c '
         ensure_output_dir config_set_output_dir config_detect_environment
         config_switch_session config_rename_session handle_config_menu
         nuke_pct nuke_verdict_compute nuke_resilience_run
+        nuke_task nuke_issue nuke_recap_reset nuke_recap_add
+        nuke_recap_word nuke_recap_print
         nuke_experiment_dir nuke_experiment_path nuke_experiment_save
         nuke_experiment_load nuke_experiment_run
         k8s_available k8s_set_scope k8s_status k8s_pod_kill
@@ -121,6 +123,13 @@ if bash -c '
     check "verdict norecover"  "$(nuke_verdict_compute 0 5 0)" "WEAK"
     nuke_verdict_compute 0 5 1 >/dev/null || { echo "ASSERT FAIL: RESILIENT rc"; exit 1; }
     nuke_verdict_compute 6 5 1 >/dev/null && { echo "ASSERT FAIL: WEAK rc"; exit 1; }
+    check "recap word 0" "$(nuke_recap_word 0)" "resilient"
+    check "recap word 1" "$(nuke_recap_word 1)" "weak"
+    check "recap word 2" "$(nuke_recap_word 2)" "errored"
+    nuke_recap_reset; nuke_recap_add resilient; nuke_recap_add weak; nuke_recap_add weak
+    check "recap resilient" "$NUKE_RECAP_RESILIENT" "1"
+    check "recap weak"      "$NUKE_RECAP_WEAK"      "2"
+    check "recap errored"   "$NUKE_RECAP_ERRORED"   "0"
     echo "verdict assertions OK"
 
     # Experiment save/load round-trip (generated file, whitelist read).

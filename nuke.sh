@@ -23,6 +23,8 @@ source "${SCRIPT_DIR}/lib/toolbox.sh"
 source "${SCRIPT_DIR}/lib/ui.sh"
 # shellcheck source=lib/verdict.sh
 source "${SCRIPT_DIR}/lib/verdict.sh"
+# shellcheck source=lib/recap.sh
+source "${SCRIPT_DIR}/lib/recap.sh"
 # shellcheck source=lib/session.sh
 source "${SCRIPT_DIR}/lib/session.sh"
 # shellcheck source=lib/modules/config.sh
