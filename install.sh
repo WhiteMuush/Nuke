@@ -71,13 +71,21 @@ install_base_dependencies() {
 # stress-ng, and the Docker engine used by the container layer and kind.
 install_system_tools() {
     log_step "Installing system tools (iproute2, iptables, stress-ng, docker)..."
-    apt_install iproute2 iptables stress-ng docker.io 2>&1 | grep -v "WARNING" || true
+    # One package at a time: a single unavailable package must not abort the
+    # others, the way one bundled `apt install a b c` would.
+    local pkg
+    for pkg in iproute2 iptables stress-ng docker.io; do
+        if apt_install "${pkg}" >/dev/null 2>&1; then
+            log_success "${pkg}"
+        else
+            log_warn "${pkg} could not be installed via apt (skipped)"
+        fi
+    done
     systemctl enable --now docker >/dev/null 2>&1 || true
     if [[ -n "${SUDO_USER:-}" ]] && getent group docker >/dev/null 2>&1; then
         usermod -aG docker "${SUDO_USER}" 2>/dev/null \
             && log_info "Added ${SUDO_USER} to the docker group (re-login to apply)."
     fi
-    log_success "System tools installed"
 }
 
 # kubectl: pinned to the current stable channel.
