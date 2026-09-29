@@ -1,0 +1,67 @@
+# Demo workload for resilience testing: three nginx replicas behind a Service,
+# with a readiness probe so the steady-state probe (ready replicas) is honest.
+# A PodDisruptionBudget keeps at least two pods up, which is exactly the kind of
+# guard a resilience check should prove works.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nuke-demo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: whoami
+  namespace: nuke-demo
+  labels:
+    app: whoami
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: whoami
+  template:
+    metadata:
+      labels:
+        app: whoami
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 2
+            periodSeconds: 3
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: whoami
+  namespace: nuke-demo
+spec:
+  selector:
+    app: whoami
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: whoami
+  namespace: nuke-demo
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: whoami
