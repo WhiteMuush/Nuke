@@ -133,6 +133,45 @@ k8s_pod_kill() {
     log_info "Deployments will reschedule killed pods automatically."
 }
 
+# Steady-state probe: healthy when every Deployment in scope has all its desired
+# replicas ready. Zero-config, derived straight from the target: no health URL
+# to write, and it holds for any workload. Returns 0 when healthy, 1 otherwise.
+k8s_steady_probe() {
+    local -a sel
+    mapfile -t sel < <(_k8s_selector_args)
+
+    local data
+    data="$(kubectl get deploy "${sel[@]}" \
+        -o jsonpath='{range .items[*]}{.spec.replicas} {.status.readyReplicas}{"\n"}{end}' \
+        2>/dev/null)" || return 1
+    # No deployments in scope: nothing to judge, treat as not-healthy so the
+    # baseline check aborts with a clear message rather than passing vacuously.
+    [[ -z "${data//[$'\n'[:space:]]/}" ]] && return 1
+
+    local desired ready
+    while read -r desired ready; do
+        [[ -z "${desired}" ]] && continue
+        ready="${ready:-0}"
+        (( desired > 0 ))     || return 1
+        (( ready >= desired )) || return 1
+    done <<< "${data}"
+    return 0
+}
+
+# Run a full resilience check: probe the steady state, kill pods, watch it heal,
+# and print a verdict. pod-kill is instantaneous, so the fault duration is 0 and
+# the whole window is the recovery budget.
+k8s_resilience_check() {
+    k8s_available     || { press_enter_to_continue; return 1; }
+    nuke_require_scope || { press_enter_to_continue; return 1; }
+
+    local level
+    level="$(nuke_pick_level "Intensity for the resilience check")" || return 0
+    nuke_subview "RESILIENCE CHECK @ $(nuke_level_label "${level}")"
+    nuke_resilience_run k8s_steady_probe k8s_pod_kill "${level}" 0 "k8s pod-kill"
+    press_enter_to_continue
+}
+
 # ===========================================================================
 # Chaos Mesh — the real k8s fault arsenal (network, stress, io, dns, time).
 # Faults are applied as Chaos Mesh CRDs scoped to the current namespace/label.
@@ -391,6 +430,7 @@ handle_kubernetes_menu() {
             1)  k8s_set_scope ;;
             2)  k8s_status ;;
             3)  k8s_setup_chaos_mesh ;;
+            14) k8s_resilience_check ;;
             4)  _k8s_run_fault k8s_pod_kill        "Pod-kill" ;;
             5)  _k8s_run_fault k8s_cm_pod_failure  "Pod-failure" ;;
             6)  _k8s_run_fault k8s_cm_net_delay    "Net delay" ;;
