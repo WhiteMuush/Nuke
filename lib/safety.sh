@@ -118,9 +118,12 @@ nuke_confirm_detonation() {
         "${YELLOW}" "${RESET}"
 
     local answer
-    read -rp "Type NUKE to confirm (anything else aborts): " answer
+    read -rp "ENTER LAUNCH CODE (type NUKE, anything else aborts): " answer
     if [[ "${answer}" == "NUKE" ]]; then
-        log_warn "Detonation confirmed."
+        log_warn "Launch code accepted."
+        if declare -F nuke_countdown >/dev/null; then
+            nuke_countdown || return 1
+        fi
         return 0
     fi
     log_info "Aborted. No chaos launched."

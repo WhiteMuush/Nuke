@@ -169,6 +169,7 @@ k8s_resilience_check() {
 
     local level
     level="$(nuke_pick_level "Intensity for the resilience check")" || return 0
+    NUKE_LEVEL="${level}"
     nuke_subview "RESILIENCE CHECK @ $(nuke_level_label "${level}")"
     nuke_resilience_run k8s_steady_probe k8s_pod_kill "${level}" 0 "k8s pod-kill"
 
@@ -253,7 +254,7 @@ _k8s_cm_run() {
     local label="$1" kind="$2" level="$3" spec="$4"
     k8s_available || return 1
     if ! k8s_chaos_mesh_ready; then
-        log_error "Chaos Mesh not installed. Run 'Setup Chaos Mesh' first."
+        log_error "Chaos Mesh not installed. Launch a Chaos Mesh fault to be offered the install."
         return 1
     fi
     nuke_require_scope || return 1
@@ -390,7 +391,7 @@ k8s_node_drain() {
 k8s_nuke_all() {
     nuke_subview "NUKE k8s"
     k8s_available || return 1
-    k8s_chaos_mesh_ready || { log_error "Chaos Mesh not installed. Run 'Setup Chaos Mesh' first."; return 1; }
+    k8s_chaos_mesh_ready || { log_error "Chaos Mesh not installed. Launch a Chaos Mesh fault to be offered the install."; return 1; }
     nuke_require_scope || return 1
     nuke_confirm_detonation "ALL fault vectors on ${NUKE_SCOPE}" || return 1
 
@@ -418,10 +419,33 @@ k8s_recover() {
 # ---------------------------------------------------------------------------
 # Menu.
 # ---------------------------------------------------------------------------
+# The menu no longer has Set scope / Setup Chaos Mesh entries, so a launch
+# asks for what is missing: the target first, then Chaos Mesh for the faults
+# that need it (anything but pod-kill and node drain).
+#   _k8s_ensure_ready [cm]
+_k8s_ensure_ready() {
+    if [[ -z "${NUKE_SCOPE}" ]]; then
+        k8s_set_scope || return 1
+        [[ -n "${NUKE_SCOPE}" ]] || return 1
+        nuke_session_save
+    fi
+    if [[ "${1:-}" == "cm" ]] && ! k8s_chaos_mesh_ready; then
+        nuke_subview "CHAOS MESH MISSING"
+        prompt_yesno "Chaos Mesh is not installed. Install it now" || return 1
+        k8s_setup_chaos_mesh
+        k8s_chaos_mesh_ready || return 1
+    fi
+    return 0
+}
+
 # Pick an intensity (full sub-view), then run the fault on a clean screen.
 _k8s_run_fault() {
     local fn="$1" label="$2" level
+    local need=""
+    [[ "${fn}" == k8s_cm_* ]] && need="cm"
+    _k8s_ensure_ready "${need}" || return 0
     level="$(nuke_pick_level "Intensity for ${label}")" || return 0
+    NUKE_LEVEL="${level}"
     nuke_subview "${label} @ $(nuke_level_label "${level}")"
     "${fn}" "${level}"
     press_enter_to_continue
@@ -436,21 +460,17 @@ handle_kubernetes_menu() {
         read -r choice
 
         case "$choice" in
-            1)  k8s_set_scope ;;
-            2)  k8s_status ;;
-            3)  k8s_setup_chaos_mesh ;;
-            14) k8s_resilience_check ;;
-            4)  _k8s_run_fault k8s_pod_kill        "Pod-kill" ;;
-            5)  _k8s_run_fault k8s_cm_pod_failure  "Pod-failure" ;;
-            6)  _k8s_run_fault k8s_cm_net_delay    "Net delay" ;;
-            7)  _k8s_run_fault k8s_cm_net_loss     "Net loss" ;;
-            8)  _k8s_run_fault k8s_cm_net_partition "Net partition" ;;
-            9)  _k8s_run_fault k8s_cm_stress_cpu   "Stress CPU" ;;
-            10) _k8s_run_fault k8s_cm_stress_mem   "Stress memory" ;;
-            11) _k8s_run_fault k8s_cm_dns          "DNS chaos" ;;
-            12) _k8s_run_fault k8s_cm_time         "Time skew" ;;
-            13) _k8s_run_fault k8s_node_drain      "Node drain" ;;
-            99) k8s_nuke_all; press_enter_to_continue ;;
+            1)  _k8s_run_fault k8s_pod_kill         "Pod-kill" ;;
+            2)  _k8s_run_fault k8s_cm_pod_failure   "Pod-failure" ;;
+            3)  _k8s_run_fault k8s_cm_net_delay     "Net delay" ;;
+            4)  _k8s_run_fault k8s_cm_net_loss      "Net loss" ;;
+            5)  _k8s_run_fault k8s_cm_net_partition "Net partition" ;;
+            6)  _k8s_run_fault k8s_cm_stress_cpu    "Stress CPU" ;;
+            7)  _k8s_run_fault k8s_cm_stress_mem    "Stress memory" ;;
+            8)  _k8s_run_fault k8s_cm_dns           "DNS chaos" ;;
+            9)  _k8s_run_fault k8s_cm_time          "Time skew" ;;
+            10) _k8s_run_fault k8s_node_drain       "Node drain" ;;
+            99) _k8s_ensure_ready cm && { k8s_nuke_all; press_enter_to_continue; } ;;
             r|R) k8s_recover ;;
             0)  return ;;
             *)

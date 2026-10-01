@@ -59,6 +59,7 @@ _net_run_fault() {
     local label="$1" tool="$2" effect="$3" level
     nuke_require_scope || { press_enter_to_continue; return 1; }
     level="$(nuke_pick_level "Intensity for ${label}")" || return 0
+    NUKE_LEVEL="${level}"
     nuke_fault_stub "${label}" "${tool}" "${effect}" "${level}"
 }
 
