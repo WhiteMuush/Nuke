@@ -150,7 +150,7 @@ _nuke_session_continue() {
         (( i++ ))
     done
 
-    nuke_menu_screen "CONTINUE SESSION" "Pick a session" "${rows[@]}"
+    nuke_menu_screen "Nuke Continue Session" "Pick a session" "${rows[@]}"
     local pick
     read -r pick
     if [[ "${pick}" =~ ^[0-9]+$ ]] && (( pick >= 1 && pick <= ${#names[@]} )); then
@@ -181,10 +181,12 @@ nuke_session_init() {
         (( ${#names[@]} > 0 )) && opts+=( "${DIM}Saved sessions: ${#names[@]}${RESET}" "" )
         opts+=(
             "${BRIGHT_RED}[1]${RESET}  New session"
+            ""
             "${BRIGHT_RED}[2]${RESET}  Continue an existing session"
+            ""
             "${BRIGHT_RED}[3]${RESET}  Auto (nuke_$(date +%Y%m%d_%H%M%S))"
         )
-        nuke_menu_screen "SESSIONS" "Session" "${opts[@]}"
+        nuke_menu_screen "Nuke Sessions" "Session" "${opts[@]}"
         local choice
         read -r choice
         case "${choice}" in

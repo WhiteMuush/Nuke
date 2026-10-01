@@ -12,6 +12,18 @@ NUKE_INTENSITY_LOADED=1
 # Ordered levels, weakest to strongest.
 NUKE_LEVEL_NAMES=(POKE STRESS HAVOC NUKE)
 
+# Last payload level picked in this run (empty until a fault asks for one).
+# Drives the DEFCON readout in the status panel.
+NUKE_LEVEL="${NUKE_LEVEL:-}"
+
+# DEFCON readout: 5 while no target is set, then 4..1 for POKE..NUKE.
+nuke_defcon() {
+    local idx=0
+    [[ -n "${NUKE_SCOPE:-}" && -n "${NUKE_LEVEL:-}" ]] \
+        && idx="$(nuke_level_index "${NUKE_LEVEL}")"
+    printf '%d' $(( 5 - idx ))
+}
+
 # 1-based index of a level name, or 0 if unknown.
 nuke_level_index() {
     local name="$1" i
@@ -76,16 +88,18 @@ nuke_pick_level() {
         clear
         local -a lines=(
             "${NUKE_BRAND_HEADER[@]}"
-            "${BOLD}${BRIGHT_RED}${title}${RESET}"
+            "${DIM}${title}${RESET}"
             ""
-            "$(printf '%b[1]%b  %b   single, brief probe'    "${BRIGHT_RED}" "${RESET}" "$(nuke_level_label POKE)")"
-            "$(printf '%b[2]%b  %b sustained, moderate'      "${BRIGHT_RED}" "${RESET}" "$(nuke_level_label STRESS)")"
-            "$(printf '%b[3]%b  %b  multi-fault, wide blast' "${BRIGHT_RED}" "${RESET}" "$(nuke_level_label HAVOC)")"
-            "$(printf '%b[4]%b  %b everything, full force'   "${BRIGHT_RED}" "${RESET}" "$(nuke_level_label NUKE)")"
-            "$(printf '%b[0]%b  cancel'                      "${BRIGHT_RED}" "${RESET}")"
         )
+        mapfile -t -O "${#lines[@]}" lines < <(nuke_menu_box "Nuke Intensity" \
+            "$(printf '%b[1]%b  %b   single, brief probe'    "${BRIGHT_RED}" "${RESET}" "$(nuke_level_label POKE)")" \
+            "$(printf '%b[2]%b  %b sustained, moderate'      "${BRIGHT_RED}" "${RESET}" "$(nuke_level_label STRESS)")" \
+            "$(printf '%b[3]%b  %b  multi-fault, wide blast' "${BRIGHT_RED}" "${RESET}" "$(nuke_level_label HAVOC)")" \
+            "$(printf '%b[4]%b  %b everything, full force'   "${BRIGHT_RED}" "${RESET}" "$(nuke_level_label NUKE)")" \
+            "" \
+            "$(printf '%b[0]%b  cancel'                      "${BRIGHT_RED}" "${RESET}")")
         render_banner_with_lines "${lines[@]}"
-        nuke_prompt "Intensity"
+        nuke_prompt "SELECT PAYLOAD"
     } >&2
     local choice
     read -r choice

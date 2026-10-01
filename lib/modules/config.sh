@@ -33,9 +33,10 @@ config_detect_environment() {
 # Switch to another session, or start a new one. Reuses the boot picker's
 # building blocks so the two entry points behave identically.
 config_switch_session() {
-    nuke_menu_screen "SWITCH SESSION" "Choice" \
+    nuke_menu_screen "Nuke Switch Session" "Choice" \
         "${BRIGHT_RED}[1]${RESET}  New session" \
         "${BRIGHT_RED}[2]${RESET}  Continue an existing session" \
+        "" \
         "${BRIGHT_RED}[0]${RESET}  Cancel"
     local choice
     read -r choice
