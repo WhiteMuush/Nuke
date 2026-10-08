@@ -7,16 +7,18 @@ setup() { load helper; _nuke_load; }
     run _menu_row2 4 "Pod-kill" 5 "Pod-failure"
     local visible
     visible="$(strip_ansi "$output")"
-    # left cell is 22 cols, so the right marker starts at column 22 (0-indexed)
-    [[ "${visible:22}" == "[5]  Pod-failure" ]]
-    [[ "$visible" == "[4]  Pod-kill"* ]]
+    # Left cell is _NUKE_CELL_W (24) cols, so the right marker starts at column
+    # 24 (0-indexed). The key slot is _NUKE_KEY_W (4) plus a 2-space gap, which
+    # puts three spaces between "[n]" and its label.
+    [[ "${visible:24}" == "[5]   Pod-failure" ]]
+    [[ "$visible" == "[4]   Pod-kill"* ]]
 }
 
 @test "_menu_row2 renders a single cell when the right side is empty" {
     run _menu_row2 3 "Setup" "" ""
     local visible
     visible="$(strip_ansi "$output")"
-    [[ "$visible" == "[3]  Setup"* ]]
+    [[ "$visible" == "[3]   Setup"* ]]
     [[ "$visible" != *"["*"]"*"["* ]]
 }
 

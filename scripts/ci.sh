@@ -156,6 +156,21 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# 4. bats unit tests (skipped with a warning when not installed; CI has it)
+# ---------------------------------------------------------------------------
+step "bats (unit tests)"
+if command -v bats >/dev/null 2>&1; then
+    if bats tests/; then
+        echo "bats OK"
+    else
+        echo "bats FAILED"
+        fail=1
+    fi
+else
+    echo "bats unavailable (not installed); CI installs and enforces it"
+fi
+
+# ---------------------------------------------------------------------------
 step "result"
 if (( fail )); then
     printf '\033[31mchecks FAILED\033[0m\n'

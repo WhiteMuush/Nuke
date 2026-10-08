@@ -50,6 +50,10 @@ setup() {
 }
 
 @test "NUKE level manifest uses mode all" {
+    # NUKE is the only level that demands a typed detonation code. Bypass it the
+    # way the headless path does, otherwise the builder reads EOF at the prompt
+    # and returns before emitting the manifest.
+    NUKE_SKIP_CONFIRM=1
     run k8s_cm_pod_failure NUKE
     [[ "$output" == *"kind: PodChaos"* ]]
     [[ "$output" == *"mode: all"* ]]
