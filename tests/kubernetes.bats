@@ -45,6 +45,11 @@ setup() {
 @test "manifest parses as YAML when a parser is available" {
     if ! command -v python3 >/dev/null; then skip "python3 not available"; fi
     python3 -c "import yaml" 2>/dev/null || skip "pyyaml not available"
+    # Silence the builder's task:/info: log lines so the captured output is the
+    # manifest alone; otherwise they turn the stream into invalid YAML. (Only
+    # bites where pyyaml is installed, e.g. CI, so it was long masked locally.)
+    log_step() { :; }
+    log_info() { :; }
     run k8s_cm_stress_cpu STRESS
     printf '%s\n' "$output" | python3 -c 'import sys,yaml; yaml.safe_load(sys.stdin)'
 }
