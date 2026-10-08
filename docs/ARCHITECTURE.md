@@ -19,6 +19,7 @@ lib/
 ├── core.sh                 Colors (TTY-aware), palette, global state.
 ├── ui.sh                   ASCII art, menus, banner rendering.
 ├── installer.sh            Logging, prompting and install primitives.
+├── compat.sh               Non-Debian / macOS gate: shared Debian box.
 └── modules/
     ├── config.sh           Target / output config.
     ├── passive.sh          Placeholder module (no privileges assumed).

@@ -52,7 +52,7 @@ done < <(find . -name '*.sh' -not -path './.git/*' -print0)
 step "smoke (source chain + functions)"
 if bash -c '
     set -uo pipefail
-    for lib in core installer runner safety intensity toolbox ui verdict recap experiment session; do
+    for lib in core installer compat runner safety intensity toolbox ui verdict recap experiment session; do
         source "./lib/${lib}.sh"
     done
     source ./lib/modules/config.sh
@@ -74,6 +74,8 @@ if bash -c '
         nuke_level_label nuke_pick_level
         nuke_have nuke_pkg_manager nuke_os_arch nuke_download
         nuke_install_binary nuke_detect_env
+        detect_distro_family host_is_supported container_runtime
+        compat_gate enter_box
         render_banner_with_lines display_banner_with_menu display_title_middle_screen
         prompt_menu_choice nuke_subview nuke_prompt _menu_row2 _menu_key
         nuke_fault_stub nuke_menu_screen

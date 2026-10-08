@@ -11,6 +11,8 @@ readonly SCRIPT_DIR
 source "${SCRIPT_DIR}/lib/core.sh"
 # shellcheck source=lib/installer.sh
 source "${SCRIPT_DIR}/lib/installer.sh"
+# shellcheck source=lib/compat.sh
+source "${SCRIPT_DIR}/lib/compat.sh"
 # shellcheck source=lib/runner.sh
 source "${SCRIPT_DIR}/lib/runner.sh"
 # shellcheck source=lib/safety.sh
@@ -93,5 +95,11 @@ if [[ "${1:-}" == "run" ]]; then
     nuke_headless_run "$@"
     exit $?
 fi
+
+# Interactive start. On a non-Debian host (Fedora, Arch, openSUSE, macOS, ...)
+# the fault tools are Linux-only, so this offers to relaunch Nuke inside the
+# shared Debian box and may replace this process with the containerised run.
+# No-op on a Debian/Kali host or once already inside the box.
+compat_gate "${SCRIPT_DIR}" nuke.sh NUKE
 
 main_loop "$@"

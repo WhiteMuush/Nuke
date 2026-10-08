@@ -43,6 +43,26 @@ iproute2 (tc), iptables, pumba and toxiproxy-cli. The Kubernetes and
 container-chaos binaries are pulled from their latest upstream release into
 `/usr/local/bin`; the rest come from apt.
 
+### Other distros and macOS
+
+Runs natively on Debian / Ubuntu / Kali. On Fedora, Arch, openSUSE, an atomic
+distro (Bazzite, Silverblue) or macOS, the chaos tools it drives (`tc`/`netem`,
+`stress-ng`, `pumba`, `kubectl`, ...) are Linux-only, so at startup Nuke offers
+to relaunch itself inside a shared lightweight Debian box (podman preferred,
+docker as a fallback). The same box is reused by the sibling toolkits under the
+same parent directory, so it is built once. Three environment variables tune it:
+
+- `PENTEST_BOX_NAME=<name>` forces a box name (highest priority).
+- `PENTEST_BOX_DEDICATED=1` gives Nuke its own box (`pentest-nuke`).
+- `PENTEST_BOX_IMAGE=<image>` overrides the base image (default
+  `debian:stable-slim`).
+
+Engagement output persists on the host under `PENTEST_ENGAGEMENTS_DIR`
+(default `~/pentest-engagements`). On a Debian host, or once already inside the
+box, Nuke runs directly with no prompt. The headless `nuke.sh run <experiment>`
+path is not gated and runs in place, since replays are meant for a Debian CI
+runner.
+
 ### Running Nuke
 
 ```bash
@@ -85,6 +105,7 @@ lib/
 ├── core.sh                Colors (TTY-aware), palette, globals.
 ├── ui.sh                  ASCII art and menu rendering.
 ├── installer.sh           Logging, prompting, install primitives.
+├── compat.sh              Non-Debian / macOS gate: shared Debian box.
 └── modules/
     ├── config.sh          Target / output config.
     ├── passive.sh         Placeholder module.
