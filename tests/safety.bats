@@ -7,7 +7,11 @@ setup() { load helper; _nuke_load; }
     nuke_rollback_reset
     nuke_rollback_add "echo A"
     nuke_rollback_add "echo B"
-    run nuke_rollback_run
+    # Run in the current shell, not via `run`: its subshell would hide the stack
+    # being cleared. Capture the output through a file instead.
+    nuke_rollback_run >"${BATS_TEST_TMPDIR}/rollback.log" 2>&1
+    local output
+    output="$(cat "${BATS_TEST_TMPDIR}/rollback.log")"
     # B (most recent) must appear before A
     [[ "$output" == *"B"*"A"* ]]
     [ "${#NUKE_ROLLBACK_STACK[@]}" -eq 0 ]

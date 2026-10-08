@@ -45,11 +45,20 @@ setup() {
 @test "manifest parses as YAML when a parser is available" {
     if ! command -v python3 >/dev/null; then skip "python3 not available"; fi
     python3 -c "import yaml" 2>/dev/null || skip "pyyaml not available"
+    # Silence the builder's task:/info: log lines so the captured output is the
+    # manifest alone; otherwise they turn the stream into invalid YAML. (Only
+    # bites where pyyaml is installed, e.g. CI, so it was long masked locally.)
+    log_step() { :; }
+    log_info() { :; }
     run k8s_cm_stress_cpu STRESS
     printf '%s\n' "$output" | python3 -c 'import sys,yaml; yaml.safe_load(sys.stdin)'
 }
 
 @test "NUKE level manifest uses mode all" {
+    # NUKE is the only level that demands a typed detonation code. Bypass it the
+    # way the headless path does, otherwise the builder reads EOF at the prompt
+    # and returns before emitting the manifest.
+    NUKE_SKIP_CONFIRM=1
     run k8s_cm_pod_failure NUKE
     [[ "$output" == *"kind: PodChaos"* ]]
     [[ "$output" == *"mode: all"* ]]
