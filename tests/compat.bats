@@ -59,46 +59,45 @@ ID_LIKE="fedora"')"
     [[ "$output" =~ ^(podman|docker|none)$ ]]
 }
 
-@test "box create args: named, host network, caps, mounts, sleep" {
-    run _box_create_args pentest-toolbox debian:stable-slim /host/toolkits /host/engagements
-    [[ "$output" == *"--name pentest-toolbox"* ]]
+@test "box create args: named, host network, caps, single toolkit mount, sleep" {
+    run _box_create_args pentest-nuke debian:stable-slim /host/Nuke /host/engagements
+    [[ "$output" == *"--name pentest-nuke"* ]]
     [[ "$output" == *"--network host"* ]]
     [[ "$output" == *"--cap-add NET_RAW"* ]]
     [[ "$output" == *"--cap-add NET_ADMIN"* ]]
-    [[ "$output" == *"/host/toolkits:/opt/toolkits"* ]]
+    [[ "$output" == *"/host/Nuke:/opt/toolkit"* ]]
     [[ "$output" == *"/host/engagements:/root/pentest-engagements"* ]]
     [[ "$output" == *"debian:stable-slim"* ]]
     [[ "$output" == *"sleep infinity"* ]]
 }
 
-@test "box_name: shared by default" {
-    unset PENTEST_BOX_NAME PENTEST_BOX_DEDICATED
-    [ "$(_box_name NUKE)" = "pentest-toolbox" ]
+@test "box create args: mounts only the toolkit, never a parent dir" {
+    run _box_create_args pentest-nuke debian:stable-slim /host/Nuke /host/engagements
+    [[ "$output" != *"/opt/toolkits"* ]]
 }
 
-@test "box_name: dedicated gives one box per toolkit" {
+@test "box_name: one box per toolkit by default" {
     unset PENTEST_BOX_NAME
-    export PENTEST_BOX_DEDICATED=1
     [ "$(_box_name NUKE)" = "pentest-nuke" ]
     [ "$(_box_name Ghostline)" = "pentest-ghostline" ]
 }
 
 @test "box_name: an explicit PENTEST_BOX_NAME wins over everything" {
-    export PENTEST_BOX_NAME=custom-box PENTEST_BOX_DEDICATED=1
+    export PENTEST_BOX_NAME=custom-box
     [ "$(_box_name NUKE)" = "custom-box" ]
 }
 
-@test "box exec args: interactive, marker env, workspace override, inner script" {
-    run _box_exec_args pentest-toolbox /opt/toolkits/Nuke/nuke.sh
+@test "box exec args: interactive, marker env, engagements, inner script" {
+    run _box_exec_args pentest-nuke /opt/toolkit/nuke.sh
     [[ "$output" == *"exec"* ]]
     [[ "$output" == *"-it"* ]]
     [[ "$output" == *"PENTEST_IN_BOX=1"* ]]
     [[ "$output" == *"PENTEST_ENGAGEMENTS=/root/pentest-engagements"* ]]
-    [[ "$output" == *"pentest-toolbox"* ]]
-    [[ "$output" == *"/opt/toolkits/Nuke/nuke.sh"* ]]
+    [[ "$output" == *"pentest-nuke"* ]]
+    [[ "$output" == *"/opt/toolkit/nuke.sh"* ]]
 }
 
 @test "box exec args: honour a different inner entry script" {
-    run _box_exec_args pentest-toolbox /opt/toolkits/ghostline/ghostline.sh
-    [[ "$output" == *"/opt/toolkits/ghostline/ghostline.sh"* ]]
+    run _box_exec_args pentest-ghostline /opt/toolkit/ghostline.sh
+    [[ "$output" == *"/opt/toolkit/ghostline.sh"* ]]
 }
