@@ -48,12 +48,13 @@ container-chaos binaries are pulled from their latest upstream release into
 Runs natively on Debian / Ubuntu / Kali. On Fedora, Arch, openSUSE, an atomic
 distro (Bazzite, Silverblue) or macOS, the chaos tools it drives (`tc`/`netem`,
 `stress-ng`, `pumba`, `kubectl`, ...) are Linux-only, so at startup Nuke offers
-to relaunch itself inside a shared lightweight Debian box (podman preferred,
-docker as a fallback). The same box is reused by the sibling toolkits under the
-same parent directory, so it is built once. Three environment variables tune it:
+to relaunch itself inside a lightweight Debian box (podman preferred, docker as
+a fallback). Nuke gets its own box (`pentest-nuke`) that mounts only the Nuke
+directory, so the box always runs the tree it was launched from, wherever that
+lives on disk, and the tools installed in it persist. Two environment variables
+tune it:
 
-- `PENTEST_BOX_NAME=<name>` forces a box name (highest priority).
-- `PENTEST_BOX_DEDICATED=1` gives Nuke its own box (`pentest-nuke`).
+- `PENTEST_BOX_NAME=<name>` forces a box name.
 - `PENTEST_BOX_IMAGE=<image>` overrides the base image (default
   `debian:stable-slim`).
 
@@ -105,7 +106,7 @@ lib/
 ├── core.sh                Colors (TTY-aware), palette, globals.
 ├── ui.sh                  ASCII art and menu rendering.
 ├── installer.sh           Logging, prompting, install primitives.
-├── compat.sh              Non-Debian / macOS gate: shared Debian box.
+├── compat.sh              Non-Debian / macOS gate: per-toolkit Debian box.
 └── modules/
     ├── config.sh          Target / output config.
     ├── passive.sh         Placeholder module.
